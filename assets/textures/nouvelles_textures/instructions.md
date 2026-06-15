@@ -1,1 +1,1 @@
-Salut Claude ! Tu vas devoir prendre toutes les nouvelles textures que je t'ai envoyé ici et que tu vas devoir utiliser à la place des anciennes.
+Salut Claude ! Tu vas devoir prendre toutes les nouvelles textures que je t'ai envoyé ici et que tu vas devoir utiliser à la place des anciennes. Juste pour le soleil comme c'est une étoile même s'il peut avoir la texture que j'ai trouvé actuellement il est très bien actuellement car je pense qu'avec sa luminosité on ne verra pas vraiment ses textures.
