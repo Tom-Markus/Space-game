@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#05070f" />
+<title>ODYSSÉE SOLAIRE — Explorateur du Système Solaire</title>
+<link rel="icon" href="./assets/textures/sun.jpg" />
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<!-- ======================= LOADING ======================= -->
+<div id="loading" class="overlay">
+  <div class="panel">
+    <h1 class="logo">ODYSSÉE&nbsp;SOLAIRE</h1>
+    <p class="subtitle" data-str="loadingSub">Initialisation des systèmes de navigation…</p>
+    <div class="bar"><div id="loadbar" class="bar-fill"></div></div>
+    <p id="loadlabel" class="loadlabel">0%</p>
+  </div>
+</div>
+
+<!-- ======================= START MENU ======================= -->
+<div id="start" class="overlay hidden">
+  <div class="panel wide">
+    <h1 class="logo">ODYSSÉE&nbsp;SOLAIRE</h1>
+    <p class="subtitle" data-str="tagline">Pilotez votre vaisseau à travers le Système Solaire et accomplissez une mission sur chaque planète.</p>
+    <div class="controls-grid" id="controlsGrid"></div>
+    <button id="startBtn" class="btn primary" data-str="startBtn">DÉCOLLAGE</button>
+    <p class="hint" data-str="startHint">Astuce : utilisez la souris pour piloter. Cliquez pour verrouiller le curseur.</p>
+  </div>
+</div>
+
+<!-- ======================= HUD ======================= -->
+<div id="hud" class="hidden">
+  <!-- reticle / crosshair -->
+  <svg id="reticle" viewBox="-50 -50 100 100" aria-hidden="true">
+    <circle cx="0" cy="0" r="22" />
+    <line x1="-34" y1="0" x2="-12" y2="0" /><line x1="34" y1="0" x2="12" y2="0" />
+    <line x1="0" y1="-34" x2="0" y2="-12" /><line x1="0" y1="34" x2="0" y2="12" />
+  </svg>
+
+  <!-- off-screen target direction arrow -->
+  <div id="targetArrow"><span>▲</span><em id="targetArrowDist"></em></div>
+  <!-- on-screen target marker -->
+  <div id="targetMarker"><span id="targetMarkerName"></span><em id="targetMarkerDist"></em></div>
+
+  <!-- mission panel (top-left) -->
+  <div id="missionPanel" class="hud-panel">
+    <div class="mp-head"><span class="mp-tag" data-str="missionTag">MISSION</span><span id="mpCount"></span></div>
+    <div id="mpTitle" class="mp-title"></div>
+    <div id="mpDesc" class="mp-desc"></div>
+    <div class="mp-prog"><div id="mpProgFill"></div></div>
+    <div id="mpDist" class="mp-dist"></div>
+  </div>
+
+  <!-- objectives log (top-right) -->
+  <div id="logPanel" class="hud-panel">
+    <div class="mp-head"><span class="mp-tag" data-str="journalTag">JOURNAL DE BORD</span></div>
+    <ul id="logList"></ul>
+    <div class="credits"><span data-str="creditsTag">Crédits</span> : <b id="creditsVal">0</b></div>
+  </div>
+
+  <!-- bottom telemetry -->
+  <div id="telemetry">
+    <div class="tele-block"><span class="tele-label" data-str="speedTag">VITESSE</span><span id="speedVal" class="tele-val">0</span><span class="tele-unit">u/s</span></div>
+    <div id="throttleWrap"><div id="throttleFill"></div><span id="boostTag" data-str="boostTag">POSTCOMBUSTION</span></div>
+    <div class="tele-block"><span class="tele-label" data-str="nearTag">CORPS PROCHE</span><span id="nearVal" class="tele-val small">—</span></div>
+  </div>
+
+  <!-- interaction prompt -->
+  <div id="prompt" class="hidden"></div>
+
+  <!-- toast messages -->
+  <div id="toast"></div>
+
+  <!-- minimap -->
+  <canvas id="minimap" width="220" height="220"></canvas>
+
+  <!-- help (toggle H) -->
+  <div id="help" class="hud-panel hidden"></div>
+</div>
+
+<!-- ======================= PAUSE ======================= -->
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2 data-str="pauseTitle">PAUSE</h2>
+    <button id="resumeBtn" class="btn primary" data-str="resumeBtn">REPRENDRE</button>
+    <button id="helpBtn" class="btn" data-str="helpBtn">COMMANDES</button>
+  </div>
+</div>
+
+<!-- ======================= WIN ======================= -->
+<div id="win" class="overlay hidden">
+  <div class="panel wide">
+    <h1 class="logo" data-str="winTitle">MISSION ACCOMPLIE</h1>
+    <p class="subtitle" data-str="winSub">Vous avez exploré l'intégralité du Système Solaire.</p>
+    <div id="winStats" class="winstats"></div>
+    <button id="restartBtn" class="btn primary" data-str="restartBtn">NOUVELLE EXPÉDITION</button>
+  </div>
+</div>
+
+<!-- ======================= MOBILE CONTROLS ======================= -->
+<div id="touchUI" class="hidden">
+  <div id="stick" class="stick"><div id="stickKnob" class="stick-knob"></div></div>
+  <div class="touch-btns">
+    <button class="tbtn" data-cmd="boost">BOOST</button>
+    <button class="tbtn" data-cmd="forward">▲</button>
+    <button class="tbtn" data-cmd="brake">FREIN</button>
+    <button class="tbtn big" data-cmd="interact">E</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
