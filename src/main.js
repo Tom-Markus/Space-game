@@ -151,6 +151,7 @@ function frame(now) {
     if (ship) ship.updateCamera(dt, camera);
   }
 
+  if (system && system.sky) system.sky.position.copy(camera.position);   // fond stellaire à l'infini
   stage.render();
 }
 

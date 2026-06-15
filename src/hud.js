@@ -28,7 +28,8 @@ export class Hud {
     };
     this.mm = this.el.minimap.getContext("2d");
     this._v = new THREE.Vector3();
-    this._maxDist = Math.max(...PLANETS.map((p) => p.distance || 0)) * 1.05;
+    // rayon radar = orbite de Pluton (les objets épars au-delà sortent du radar)
+    this._maxDist = (PLANETS.find((p) => p.key === "pluto")?.distance || 1) * 1.1;
     this._list = [];
   }
 

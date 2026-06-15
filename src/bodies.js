@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SUN, PLANETS } from "./config.js";
+import { SUN, PLANETS, SKYBOX } from "./config.js";
 
 // ---------- petits shaders réutilisés ----------
 const SRGB2LIN = `vec3 toLin(vec3 c){ return pow(c, vec3(2.2)); }`;
@@ -59,12 +59,12 @@ void main(){
 const RING_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform sampler2D ringMap; uniform float alphaMul; varying vec2 vUv;
+uniform sampler2D ringMap; uniform sampler2D alphaMap; uniform float useAlpha; uniform float alphaMul; varying vec2 vUv;
 ${SRGB2LIN}
 void main(){
   #include <logdepthbuf_fragment>
   vec4 c = texture2D(ringMap, vUv);
-  float a = clamp((c.r + c.g + c.b) / 3.0 * 1.7, 0.0, 1.0) * alphaMul;
+  float a = (useAlpha > 0.5 ? texture2D(alphaMap, vUv).r : clamp((c.r + c.g + c.b) / 3.0 * 1.7, 0.0, 1.0)) * alphaMul;
   if (a < 0.02) discard;
   gl_FragColor = vec4(toLin(c.rgb), a);
 }`;
@@ -99,12 +99,14 @@ export class SolarSystem {
       mgr.onProgress = (_u, a, b) => onProgress && onProgress(a / b);
       mgr.onLoad = () => { this._build(); resolve(this); };
       const loader = new THREE.TextureLoader(mgr);
-      const urls = new Set([SUN.map]);
+      const urls = new Set([SUN.map, SKYBOX]);
       for (const p of PLANETS)
         for (const k of ["map", "bump", "normal", "spec", "night", "clouds"])
           if (p[k]) urls.add(p[k]);
-        // ring + moon maps
-      for (const p of PLANETS) { if (p.ring) urls.add(p.ring.map); if (p.moon) urls.add(p.moon.map); }
+      for (const p of PLANETS) {
+        if (p.ring) { urls.add(p.ring.map); if (p.ring.alpha) urls.add(p.ring.alpha); }
+        if (p.moon) urls.add(p.moon.map);
+      }
       for (const u of urls) this.tex[u] = loader.load(u);
     });
   }
@@ -128,8 +130,8 @@ export class SolarSystem {
     corona.scale.setScalar(SUN.radius * 3.5); sun.add(corona); this.corona = corona;
     this.bodies.set("sun", { def: SUN, holder: sun, radius: SUN.radius, getWorldPosition: (v) => v.set(0, 0, 0) });
 
-    // ---- étoiles ----
-    this._buildStars();
+    // ---- fond galactique (Voie lactée) ----
+    this._buildSkybox();
 
     // ---- planètes ----
     for (const def of PLANETS) {
@@ -220,7 +222,12 @@ export class SolarSystem {
       uv.setXY(i, (rad - r.inner) / (r.outer - r.inner), 0.5);
     }
     const mat = new THREE.ShaderMaterial({
-      uniforms: { ringMap: { value: this._color(r.map) }, alphaMul: { value: r.faint ? 0.5 : 1.0 } },
+      uniforms: {
+        ringMap: { value: this._color(r.map) },
+        alphaMap: { value: this._color(r.alpha || r.map, false) },
+        useAlpha: { value: r.alpha ? 1 : 0 },
+        alphaMul: { value: r.faint ? 0.5 : 1.0 },
+      },
       vertexShader: `#include <common>
         #include <logdepthbuf_pars_vertex>
         varying vec2 vUv;
@@ -245,25 +252,18 @@ export class SolarSystem {
     parent.add(line);
   }
 
-  _buildStars() {
-    // champ d'étoiles discret et lointain (look « ISS » : ciel quasi noir,
-    // étoiles ténues qui se noient près de la lumière du Soleil)
-    const N = 2400, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-    const c = new THREE.Color();
-    for (let i = 0; i < N; i++) {
-      const r = 4.0e11 + Math.random() * 3.0e11;
-      const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-      pos[i * 3] = r * s * Math.cos(th); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(th);
-      const l = 0.3 + Math.random() * 0.45;
-      c.setHSL(0.6, 0.05, l);
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({ size: 1.1, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false });
-    this.stars = new THREE.Points(geo, mat);
-    this.scene.add(this.stars);
+  _buildSkybox() {
+    // Voie lactée réelle en fond, volontairement assombrie -> ambiance « ISS » :
+    // ciel quasi noir, pas de grosses étoiles criardes, juste la bande galactique.
+    const tex = this.tex[SKYBOX];
+    if (!tex) return;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, side: THREE.BackSide, color: 0x5a5a66, depthWrite: false, fog: false,
+    });
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(5.0e11, 64, 32), mat);
+    this.sky.renderOrder = -1;
+    this.scene.add(this.sky);
   }
 
   // ---------- boucle ----------

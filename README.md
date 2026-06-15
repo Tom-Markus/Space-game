@@ -8,7 +8,11 @@ Rendu avec [Three.js](https://threejs.org) (WebGL) et de **vraies cartes de text
 planétaires** (NASA / Planet Pixel Emporium) pour un maximum de réalisme : éclairage
 ponctuel depuis le Soleil, terminateurs jour/nuit, lumières des villes côté nuit de la
 Terre, océans spéculaires, nuages, atmosphères, anneaux de Saturne et d'Uranus, halo
-solaire avec *bloom*, et un champ d'étoiles discret.
+solaire avec *bloom*, et un fond de **Voie lactée** réelle (ambiance « ISS » : ciel quasi noir).
+
+Textures haute définition fournies par l'utilisateur (cartes `tom_`), optimisées pour le web
+(4K pour les astres qu'on approche, 2K pour le reste). Bonus : 4 **planètes naines**
+explorables — Cérès, Hauméa, Makémaké, Éris — à leur vraie distance.
 
 ## 📐 Échelle — à taille réelle
 
