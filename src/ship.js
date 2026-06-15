@@ -16,6 +16,7 @@ export class Ship {
     this._look = new THREE.Vector3();
     this._desired = new THREE.Vector3();
     this._c = new THREE.Vector3(); this._to = new THREE.Vector3();
+    this._prevPos = new THREE.Vector3(); this._camTmp = new THREE.Vector3();
     this._Rd = new THREE.Vector3(); this._Ud = new THREE.Vector3();
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion();
     this._baseFov = 60; this._t = 0; this._collided = false;
@@ -85,7 +86,7 @@ export class Ship {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x66ddff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.position.z = 2.4; model.add(halo); this.halo = halo;
 
-    model.scale.setScalar(SHIP.size / 3.2);   // ajuste à la taille réelle voulue
+    model.scale.setScalar(SHIP.size / 6);   // corps ≈ 1 u = 100 m (référence d'échelle)
     this.group.add(model);
   }
 
@@ -95,6 +96,7 @@ export class Ship {
     this._m.lookAt(pos, lookTarget, WORLD_UP);
     this.group.quaternion.setFromRotationMatrix(this._m);
     this._look.copy(lookTarget);
+    this._prevPos.copy(pos);
   }
 
   forward(out) { return out.set(0, 0, -1).applyQuaternion(this.group.quaternion); }
@@ -191,6 +193,10 @@ export class Ship {
 
   updateCamera(dt, camera) {
     const g = this.group; g.updateMatrixWorld();
+    // suivi RIGIDE du déplacement (sans retard, même en distorsion) ...
+    camera.position.add(this._camTmp.copy(g.position).sub(this._prevPos));
+    this._prevPos.copy(g.position);
+    // ... puis lissage de l'erreur d'offset (orientation/hauteur)
     this._desired.set(0, SHIP.cam.height, SHIP.cam.dist).applyMatrix4(g.matrixWorld);
     camera.position.lerp(this._desired, 1 - Math.exp(-SHIP.cam.lag * dt));
     if (this.warpAmount > 0.05) {                       // très légère vibration en distorsion seulement

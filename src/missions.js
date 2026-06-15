@@ -32,9 +32,8 @@ export class Missions {
   }
 
   _rangeFor(m, radius) {
-    const t = m.def.mission.type;
-    if (t === "land") return Math.max(radius * 0.8, this._minRange || 12);
-    return radius * 2.4 + radius * 0.4 + 12;   // ~2,8 rayons : proportionnel à la taille
+    if (m.def.mission.type === "land") return radius * 0.2;   // près de la surface
+    return radius * 2.8;                                      // ~2,8 rayons (proportionnel)
   }
 
   update(dt, ship, input) {

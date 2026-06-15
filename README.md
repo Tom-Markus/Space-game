@@ -8,7 +8,30 @@ Rendu avec [Three.js](https://threejs.org) (WebGL) et de **vraies cartes de text
 planétaires** (NASA / Planet Pixel Emporium) pour un maximum de réalisme : éclairage
 ponctuel depuis le Soleil, terminateurs jour/nuit, lumières des villes côté nuit de la
 Terre, océans spéculaires, nuages, atmosphères, anneaux de Saturne et d'Uranus, halo
-solaire avec *bloom*, et un champ d'étoiles procédural.
+solaire avec *bloom*, et un champ d'étoiles discret.
+
+## 📐 Échelle — à taille réelle
+
+L'**unité de référence est le vaisseau** : il mesure **exactement 100 m de long = 1 unité scène**.
+Tout le reste (astres et distances) est à la **vraie échelle**, proportionnel à cette mesure :
+
+> **1 unité = 100 m**, donc **1 km = 10 unités** (`S = 10`).
+> Chaque astre/distance = sa valeur réelle × `S`.
+
+Quelques conséquences, vérifiables dans `src/config.js` :
+
+| Objet | Réel | Dans la simulation | Rapport au vaisseau |
+|---|---|---|---|
+| Vaisseau | 100 m | 1 u | ×1 |
+| Diamètre Terre | 12 742 km | 127 420 u | **×127 420** |
+| Rayon Soleil | 696 340 km | 6 963 400 u | ×6 963 400 |
+| Orbite Terre | 149,6 M km | 1,496 G u | — |
+| Orbite Neptune | 4,495 G km | 44,95 G u | — |
+
+Vu l'amplitude colossale (du vaisseau de 100 m jusqu'à Neptune à 4,5 milliards de km),
+le rendu utilise un **depth-buffer logarithmique** pour rester précis de près comme de loin.
+Les distances immenses se franchissent à la **vitesse de distorsion** (voir Commandes), qui
+**ralentit automatiquement** à l'approche d'un astre.
 
 ## ▶️ Jouer
 
@@ -22,16 +45,20 @@ python3 -m http.server 8000
 
 ## 🎮 Commandes
 
+L'horizon se **stabilise automatiquement** (anti-nausée) : pas de roulis à gérer.
+
 | Action | Touche |
 |---|---|
 | Orienter le vaisseau | **Souris** (curseur verrouillé) |
-| Propulsion avant / arrière | **Z/W** / **S** |
-| Tonneau (roulis) | **A** / **D** |
-| Postcombustion (boost) | **Maj** |
-| Frein inertiel | **Espace** |
+| Accélérer / Ralentir-reculer | **Z/W** / **S** |
+| Postcombustion | **Maj** |
+| **Distorsion (super-boost)** | **Espace** (maintenir) |
 | Analyser / Atterrir | **E** (maintenir) |
-| Tangage / lacet (alternatif) | **Flèches** |
+| Orienter (alternatif) | **Flèches** |
 | Carte / Aide / Pause | **M** / **H** / **Échap** |
+
+La **distorsion** accélère énormément en espace ouvert puis **ralentit toute seule** près
+d'un astre — c'est ainsi qu'on franchit les distances réelles. Manette et tactile gérés.
 
 Manette (Gamepad) et commandes **tactiles** (joystick + boutons) sont également prises en charge.
 

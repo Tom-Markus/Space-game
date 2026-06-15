@@ -53,7 +53,7 @@ function placeShipStart() {
     .addScaledVector(up, er * 0.7)
     .addScaledVector(tangent, er * 1.3);
   ship.reset(start, tmp);
-  camera.position.copy(start).addScaledVector(outward, er * 0.4).addScaledVector(up, er * 0.12);
+  camera.position.copy(start).addScaledVector(outward, SHIP.cam.dist).addScaledVector(up, SHIP.cam.height);
   camera.lookAt(tmp);
 }
 

@@ -5,18 +5,17 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 export function createStage(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance", logarithmicDepthBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
 
-  // near petit (le vaisseau est proche), far énorme (échelle réelle).
-  // La précision de profondeur se concentre près de la caméra = là où on en a besoin.
-  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 2.0e9);
+  // Échelle réelle : énorme amplitude near/far -> depth-buffer logarithmique.
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 1.0e12);
   camera.position.set(0, 3, 12);
 
   const composer = new EffectComposer(renderer);

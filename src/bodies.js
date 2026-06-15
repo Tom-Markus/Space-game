@@ -5,6 +5,8 @@ import { SUN, PLANETS } from "./config.js";
 const SRGB2LIN = `vec3 toLin(vec3 c){ return pow(c, vec3(2.2)); }`;
 
 const EARTH_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
 varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
 void main(){
   vUv = uv;
@@ -12,12 +14,16 @@ void main(){
   vWorldPos = wp.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
   gl_Position = projectionMatrix * viewMatrix * wp;
+  #include <logdepthbuf_vertex>
 }`;
 const EARTH_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
 uniform sampler2D dayMap; uniform sampler2D nightMap; uniform sampler2D specMap; uniform vec3 sunPos;
 varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
 ${SRGB2LIN}
 void main(){
+  #include <logdepthbuf_fragment>
   vec3 N = normalize(vWorldNormal);
   vec3 L = normalize(sunPos - vWorldPos);
   float ndl = dot(N, L);
@@ -36,9 +42,12 @@ void main(){
 
 const ATMO_VERT = EARTH_VERT;
 const ATMO_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
 uniform vec3 glowColor; uniform float power; uniform vec3 sunPos;
 varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
 void main(){
+  #include <logdepthbuf_fragment>
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(sunPos - vWorldPos);
@@ -48,9 +57,12 @@ void main(){
 }`;
 
 const RING_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
 uniform sampler2D ringMap; uniform float alphaMul; varying vec2 vUv;
 ${SRGB2LIN}
 void main(){
+  #include <logdepthbuf_fragment>
   vec4 c = texture2D(ringMap, vUv);
   float a = clamp((c.r + c.g + c.b) / 3.0 * 1.7, 0.0, 1.0) * alphaMul;
   if (a < 0.02) discard;
@@ -105,7 +117,8 @@ export class SolarSystem {
     // ---- éclairage ----
     this.sunLight = new THREE.PointLight(SUN.light.color, SUN.light.intensity, 0, 0);
     scene.add(this.sunLight);
-    scene.add(new THREE.AmbientLight(0x2a3550, 0.10));
+    // ambiance « espace » : presque aucune lumière d'appoint -> côtés sombres très noirs
+    scene.add(new THREE.AmbientLight(0x14223c, 0.025));
 
     // ---- Soleil ----
     const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(1.25, 1.15, 0.95) });
@@ -123,8 +136,6 @@ export class SolarSystem {
       if (def.isMoonOf) continue;            // la Lune est construite avec la Terre
       this._buildPlanet(def);
     }
-    // orbites
-    for (const def of PLANETS) if (!def.isMoonOf) this._orbitLine(def.distance);
   }
 
   _buildPlanet(def) {
@@ -193,7 +204,6 @@ export class SolarSystem {
       const mmesh = new THREE.Mesh(new THREE.SphereGeometry(mr, 48, 32),
         new THREE.MeshStandardMaterial({ map: this._color(def.moon.map), roughness: 1, metalness: 0 }));
       mholder.add(mmesh);
-      this._orbitLine(def.moon.distance, holder, 0x445566, 0.25);
       this.bodies.set("moon", { def: moonDef, holder: mholder, radius: mr, getWorldPosition: (v) => mholder.getWorldPosition(v) });
       this._moon = { pivot: mpivot, spin: mmesh, def: def.moon };
     }
@@ -211,7 +221,14 @@ export class SolarSystem {
     }
     const mat = new THREE.ShaderMaterial({
       uniforms: { ringMap: { value: this._color(r.map) }, alphaMul: { value: r.faint ? 0.5 : 1.0 } },
-      vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      vertexShader: `#include <common>
+        #include <logdepthbuf_pars_vertex>
+        varying vec2 vUv;
+        void main(){
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          #include <logdepthbuf_vertex>
+        }`,
       fragmentShader: RING_FRAG, transparent: true, side: THREE.DoubleSide, depthWrite: false,
     });
     const ring = new THREE.Mesh(geo, mat);
@@ -229,20 +246,22 @@ export class SolarSystem {
   }
 
   _buildStars() {
-    const N = 9000, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    // champ d'étoiles discret et lointain (look « ISS » : ciel quasi noir,
+    // étoiles ténues qui se noient près de la lumière du Soleil)
+    const N = 2400, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
     const c = new THREE.Color();
     for (let i = 0; i < N; i++) {
-      const r = 2.0e8 + Math.random() * 3.5e8;
+      const r = 4.0e11 + Math.random() * 3.0e11;
       const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
       pos[i * 3] = r * s * Math.cos(th); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(th);
-      const t = Math.random();
-      if (t > 0.93) c.setHSL(0.58, 0.6, 0.85); else if (t > 0.86) c.setHSL(0.08, 0.7, 0.8); else c.setHSL(0.6, 0.05, 0.6 + Math.random() * 0.4);
+      const l = 0.3 + Math.random() * 0.45;
+      c.setHSL(0.6, 0.05, l);
       col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({ size: 2.0, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false });
+    const mat = new THREE.PointsMaterial({ size: 1.1, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false });
     this.stars = new THREE.Points(geo, mat);
     this.scene.add(this.stars);
   }
