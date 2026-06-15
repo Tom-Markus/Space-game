@@ -3,10 +3,8 @@
 const HELD_BIND = {
   KeyW: "forward", KeyZ: "forward",
   KeyS: "back",
-  KeyA: "rollL", KeyQ: "rollL",
-  KeyD: "rollR",
   ShiftLeft: "boost", ShiftRight: "boost",
-  Space: "brake",
+  Space: "warp",                       // super-boost / vitesse de distorsion
   KeyE: "interact",
   ArrowUp: "pitchUp", ArrowDown: "pitchDown",
   ArrowLeft: "yawL", ArrowRight: "yawR",
@@ -19,7 +17,7 @@ export class Input {
     this.held = new Set();
     this.mouseDX = 0; this.mouseDY = 0;
     this.touch = { dx: 0, dy: 0 };
-    this.pad = { yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, brake: false, interact: false };
+    this.pad = { yaw: 0, pitch: 0, throttle: 0, boost: false, warp: false, interact: false };
     this.locked = false;
     this.enabled = false;
     this._press = {};
@@ -98,20 +96,19 @@ export class Input {
   }
 
   pollGamepad() {
-    this.pad.yaw = this.pad.pitch = this.pad.roll = this.pad.throttle = 0;
-    this.pad.boost = this.pad.brake = this.pad.interact = false;
+    this.pad.yaw = this.pad.pitch = this.pad.throttle = 0;
+    this.pad.boost = this.pad.warp = this.pad.interact = false;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads) {
       if (!gp) continue;
       const dz = (v) => (Math.abs(v) < 0.15 ? 0 : v);
       this.pad.yaw += dz(gp.axes[0] || 0);
       this.pad.pitch += dz(gp.axes[1] || 0);
-      if (gp.axes.length > 2) this.pad.roll += dz(gp.axes[2] || 0);
       const rt = gp.buttons[7]?.value || 0, lt = gp.buttons[6]?.value || 0;
       this.pad.throttle += rt - lt;
-      if (gp.buttons[0]?.pressed) this.pad.interact = true;
-      if (gp.buttons[5]?.pressed) this.pad.boost = true;
-      if (gp.buttons[1]?.pressed) this.pad.brake = true;
+      if (gp.buttons[2]?.pressed) this.pad.interact = true;            // X
+      if (gp.buttons[5]?.pressed) this.pad.boost = true;               // RB
+      if (gp.buttons[0]?.pressed || gp.buttons[4]?.pressed) this.pad.warp = true; // A / LB
     }
   }
 
@@ -119,9 +116,8 @@ export class Input {
   consumeMouse() { const d = { dx: this.mouseDX, dy: this.mouseDY }; this.mouseDX = 0; this.mouseDY = 0; return d; }
   axisYaw() { return (this.held.has("yawL") ? -1 : 0) + (this.held.has("yawR") ? 1 : 0) + this.touch.dx + this.pad.yaw; }
   axisPitch() { return (this.held.has("pitchUp") ? -1 : 0) + (this.held.has("pitchDown") ? 1 : 0) + this.touch.dy + this.pad.pitch; }
-  axisRoll() { return (this.held.has("rollL") ? -1 : 0) + (this.held.has("rollR") ? 1 : 0) + this.pad.roll; }
   throttle() { return (this.held.has("forward") ? 1 : 0) - (this.held.has("back") ? 1 : 0) + Math.max(0, this.pad.throttle); }
   boost() { return this.held.has("boost") || this.pad.boost; }
-  brake() { return this.held.has("brake") || this.pad.brake; }
+  warp() { return this.held.has("warp") || this.pad.warp; }
   interact() { return this.held.has("interact") || this.pad.interact; }
 }

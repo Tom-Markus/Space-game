@@ -14,8 +14,10 @@ export function createStage(canvas) {
 
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.5, 60000);
-  camera.position.set(0, 30, 120);
+  // near petit (le vaisseau est proche), far énorme (échelle réelle).
+  // La précision de profondeur se concentre près de la caméra = là où on en a besoin.
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 2.0e9);
+  camera.position.set(0, 3, 12);
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));

@@ -2,9 +2,9 @@
 export const STRINGS = {
   fr: {
     loadingSub: "Initialisation des systèmes de navigation…",
-    tagline: "Pilotez votre vaisseau à la 3ᵉ personne à travers le Système Solaire et accomplissez une mission scientifique sur chaque astre.",
+    tagline: "Pilotez votre vaisseau à la 3ᵉ personne dans un Système Solaire à l'échelle réelle et accomplissez une mission sur chaque astre. La vitesse de distorsion franchit les distances immenses.",
     startBtn: "DÉCOLLAGE",
-    startHint: "Astuce : la souris pilote le vaisseau. Le curseur se verrouille au démarrage (Échap pour le libérer).",
+    startHint: "La souris pilote, l'horizon se stabilise tout seul. Maintenez Espace pour la distorsion — elle ralentit automatiquement près des astres.",
     missionTag: "MISSION",
     journalTag: "JOURNAL DE BORD",
     creditsTag: "Crédits",
@@ -30,15 +30,13 @@ export const STRINGS = {
     distUnit: "Mu", // millions d'unités
     controls: [
       ["Souris", "Orienter le vaisseau"],
-      ["Z / W", "Propulsion avant"],
-      ["S", "Rétro-propulsion"],
-      ["A / D", "Tonneau (roulis)"],
-      ["Maj", "Postcombustion (boost)"],
-      ["Espace", "Frein inertiel"],
+      ["Z / W", "Accélérer"],
+      ["S", "Ralentir / reculer"],
+      ["Maj", "Postcombustion"],
+      ["Espace", "DISTORSION (super-boost)"],
       ["E", "Analyser / Atterrir"],
-      ["Flèches", "Tangage / lacet"],
-      ["M", "Carte"],
-      ["H", "Aide"],
+      ["Flèches", "Orienter (alternatif)"],
+      ["M / H", "Carte / Aide"],
       ["Échap", "Pause"],
     ],
     verbs: { scan: "analyser", land: "vous poser sur", flythrough: "traverser les anneaux de", probe: "sonder", sample: "prélever sur" },

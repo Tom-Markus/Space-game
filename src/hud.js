@@ -1,24 +1,35 @@
 import * as THREE from "three";
-import { PLANETS } from "./config.js";
-import { T } from "./strings.js";
+import { PLANETS, SCALE } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : Math.round(n).toString());
+const KM = SCALE.unitKm;                         // km par unité scène
+
+function fmtKm(km) {
+  if (km >= 1e9) return (km / 1e9).toFixed(2) + " G km";
+  if (km >= 1e6) return (km / 1e6).toFixed(2) + " M km";
+  if (km >= 1e3) return (km / 1e3).toFixed(1) + " k km";
+  return Math.round(km) + " km";
+}
+function fmtSpeed(kmps) {
+  if (kmps >= 1e6) return (kmps / 1e6).toFixed(1) + "M";
+  if (kmps >= 1e3) return (kmps / 1e3).toFixed(1) + "k";
+  return Math.round(kmps).toString();
+}
 
 export class Hud {
   constructor() {
     this.el = {
-      mpTitle: $("mpTitle"), mpDesc: $("mpDesc"), mpCount: $("mpCount"),
-      mpProg: $("mpProgFill"), mpDist: $("mpDist"),
+      mpTitle: $("mpTitle"), mpDesc: $("mpDesc"), mpCount: $("mpCount"), mpProg: $("mpProgFill"), mpDist: $("mpDist"),
       prompt: $("prompt"), toast: $("toast"), log: $("logList"), credits: $("creditsVal"),
-      speed: $("speedVal"), throttle: $("throttleFill"), throttleWrap: $("throttleWrap"),
-      near: $("nearVal"), marker: $("targetMarker"), markerName: $("targetMarkerName"),
-      markerDist: $("targetMarkerDist"), arrow: $("targetArrow"), arrowDist: $("targetArrowDist"),
-      minimap: $("minimap"),
+      speed: $("speedVal"), mode: $("modeBadge"), gauge: $("gaugeFill"),
+      near: $("nearVal"), nearDist: $("nearDist"),
+      marker: $("targetMarker"), markerName: $("targetMarkerName"), markerDist: $("targetMarkerDist"),
+      arrow: $("targetArrow"), arrowDist: $("targetArrowDist"), minimap: $("minimap"),
     };
-    this.mmctx = this.el.minimap.getContext("2d");
+    this.mm = this.el.minimap.getContext("2d");
     this._v = new THREE.Vector3();
     this._maxDist = Math.max(...PLANETS.map((p) => p.distance || 0)) * 1.05;
+    this._list = [];
   }
 
   setMission(num, total, title, desc, name) {
@@ -28,14 +39,22 @@ export class Hud {
     this.setProgress(0);
   }
   setProgress(p) { this.el.mpProg.style.width = Math.max(0, Math.min(1, p)) * 100 + "%"; }
-  setDistance(alt) { this.el.mpDist.textContent = alt == null ? "" : `Distance : ${fmt(alt)} u`; }
+  setDistance(altU) { this.el.mpDist.textContent = altU == null ? "" : "Cible : " + fmtKm(altU * KM); }
   setCredits(c) { this.el.credits.textContent = c; }
-  setNearest(name) { this.el.near.textContent = name || "—"; }
 
-  setSpeed(speed, boosting, throttleVis) {
-    this.el.speed.textContent = Math.round(speed);
-    this.el.throttle.style.width = Math.max(0, Math.min(1, throttleVis)) * 100 + "%";
-    this.el.throttleWrap.classList.toggle("boost", !!boosting);
+  setNav(name, distU) {
+    this.el.near.textContent = name || "—";
+    this.el.nearDist.textContent = distU == null ? "" : fmtKm(distU * KM);
+  }
+
+  setSpeed(speedU, mode, gaugeFrac) {
+    this.el.speed.textContent = fmtSpeed(Math.abs(speedU) * KM);
+    this.el.mode.className = "mode " + mode;
+    this.el.mode.textContent = mode === "warp" ? "DISTORSION" : mode === "boost" ? "POSTCOMBUSTION" : "CROISIÈRE";
+    this.el.gauge.style.width = Math.max(0, Math.min(1, gaugeFrac)) * 100 + "%";
+    this.el.gauge.style.background = mode === "warp"
+      ? "linear-gradient(90deg,#5a7bff,#b06bff)"
+      : mode === "boost" ? "linear-gradient(90deg,#ff8a3c,#ffc24d)" : "linear-gradient(90deg,#2b8fc6,#62d8ff)";
   }
 
   showPrompt(html) {
@@ -46,93 +65,85 @@ export class Hud {
   toast(msg, type = "ok") {
     const d = document.createElement("div");
     d.className = "toast-item" + (type === "warn" ? " warn" : "");
-    d.textContent = msg;
-    this.el.toast.appendChild(d);
+    d.textContent = msg; this.el.toast.appendChild(d);
     setTimeout(() => d.remove(), 4000);
   }
 
   renderLog(list) {
+    this._list = list;
+    const active = list.findIndex((m) => !m.done);
     this.el.log.innerHTML = "";
-    for (const m of list) {
+    list.forEach((m, i) => {
       const li = document.createElement("li");
-      if (m.done) li.className = "done";
-      li.innerHTML = `<span class="ic">${m.done ? "✔" : "•"}</span><span>${m.def.name} — ${m.def.mission.title}</span>`;
+      li.className = m.done ? "done" : i === active ? "active" : "";
+      li.innerHTML = `<span class="ic">${m.done ? "✔" : i === active ? "▸" : "•"}</span><span>${m.def.name} — ${m.def.mission.title}</span>`;
       this.el.log.appendChild(li);
-    }
+    });
   }
 
-  updateTargetMarker(camera, world, name, dist) {
+  updateTargetMarker(camera, world, name, distU) {
     if (!world) { this.el.marker.style.display = "none"; this.el.arrow.style.display = "none"; return; }
     const W = innerWidth, H = innerHeight;
     const cam = world.clone().applyMatrix4(camera.matrixWorldInverse);
     const inFront = cam.z < 0;
     this._v.copy(world).project(camera);
     const sx = (this._v.x * 0.5 + 0.5) * W, sy = (-this._v.y * 0.5 + 0.5) * H;
-    const onScreen = inFront && sx >= 24 && sx <= W - 24 && sy >= 70 && sy <= H - 90;
-    if (onScreen) {
+    if (inFront && sx >= 26 && sx <= W - 26 && sy >= 76 && sy <= H - 96) {
       this.el.arrow.style.display = "none";
       this.el.marker.style.display = "flex";
       this.el.marker.style.left = sx + "px"; this.el.marker.style.top = sy + "px";
-      this.el.markerName.textContent = name; this.el.markerDist.textContent = fmt(dist) + " u";
+      this.el.markerName.textContent = name; this.el.markerDist.textContent = fmtKm(distU * KM);
     } else {
       this.el.marker.style.display = "none";
       this.el.arrow.style.display = "flex";
-      let dx = this._v.x, dy = this._v.y;
-      if (!inFront) { dx = -dx; dy = -dy; }
-      const ang = Math.atan2(dy, dx);
-      const R = Math.min(W, H) * 0.34;
-      const ax = W / 2 + Math.cos(ang) * R, ay = H / 2 - Math.sin(ang) * R;
-      this.el.arrow.style.left = ax + "px"; this.el.arrow.style.top = ay + "px";
+      let dx = this._v.x, dy = this._v.y; if (!inFront) { dx = -dx; dy = -dy; }
+      const ang = Math.atan2(dy, dx), R = Math.min(W, H) * 0.33;
+      this.el.arrow.style.left = (W / 2 + Math.cos(ang) * R) + "px";
+      this.el.arrow.style.top = (H / 2 - Math.sin(ang) * R) + "px";
       this.el.arrow.firstElementChild.style.transform = `rotate(${90 - ang * 180 / Math.PI}deg)`;
-      this.el.arrowDist.textContent = name + " · " + fmt(dist) + " u";
+      this.el.arrowDist.textContent = name + " · " + fmtKm(distU * KM);
     }
   }
 
   updateMinimap(system, ship, targetKey) {
-    const ctx = this.mmctx, S = this.el.minimap.width, c = S / 2;
-    const scale = (c - 12) / this._maxDist;
+    const ctx = this.mm, S = this.el.minimap.width, c = S / 2;
+    const scale = (c - 10) / this._maxDist;
     ctx.clearRect(0, 0, S, S);
-    // orbites
-    ctx.strokeStyle = "rgba(95,208,255,.16)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(98,216,255,.10)"; ctx.lineWidth = 1;
     for (const p of PLANETS) {
       if (!p.distance) continue;
       ctx.beginPath(); ctx.arc(c, c, p.distance * scale, 0, Math.PI * 2); ctx.stroke();
     }
-    // soleil
-    ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.arc(c, c, 4, 0, Math.PI * 2); ctx.fill();
-    // planètes
+    ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.arc(c, c, 3.5, 0, Math.PI * 2); ctx.fill();
     for (const [key, b] of system.bodies) {
       if (key === "sun" || key === "moon") continue;
       b.getWorldPosition(this._v);
       const x = c + this._v.x * scale, y = c + this._v.z * scale;
       if (key === targetKey) {
-        ctx.strokeStyle = "#ffcf5f"; ctx.lineWidth = 2;
+        ctx.strokeStyle = "#ffc24d"; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.fillStyle = "#" + new THREE.Color(b.def.color || 0x99aabb).getHexString();
-      ctx.beginPath(); ctx.arc(x, y, key === targetKey ? 3.2 : 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, key === targetKey ? 3 : 2.2, 0, Math.PI * 2); ctx.fill();
     }
-    // vaisseau
     const sx = c + ship.group.position.x * scale, sy = c + ship.group.position.z * scale;
-    ship.forward(this._v);
-    const a = Math.atan2(this._v.z, this._v.x);
+    ship.forward(this._v); const a = Math.atan2(this._v.z, this._v.x);
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(a);
-    ctx.fillStyle = "#7CFFB2"; ctx.beginPath();
+    ctx.fillStyle = "#62ffb0"; ctx.beginPath();
     ctx.moveTo(7, 0); ctx.lineTo(-4, 4); ctx.lineTo(-4, -4); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 
-  buildControls(container) {
+  buildControls(container, controls) {
     container.innerHTML = "";
-    for (const [key, label] of T("controls")) {
+    for (const [key, label] of controls) {
       const row = document.createElement("div"); row.className = "row";
       row.innerHTML = `<span>${label}</span><span class="key">${key}</span>`;
       container.appendChild(row);
     }
   }
-
-  buildHelp(el) {
+  buildHelp(el, controls) {
     el.innerHTML = `<h3>COMMANDES</h3>` +
-      T("controls").map(([k, l]) => `<div class="row"><span>${l}</span><span class="key">${k}</span></div>`).join("");
+      controls.map(([k, l]) => `<div class="row"><span>${l}</span><span class="key">${k}</span></div>`).join("");
   }
 }

@@ -78,6 +78,7 @@ export class SolarSystem {
     this._atmoMats = [];
     this._clouds = [];
     this._tmp = new THREE.Vector3();
+    this._t = 0;
   }
 
   load(onProgress) {
@@ -111,7 +112,7 @@ export class SolarSystem {
     const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 64, 48), sunMat);
     scene.add(sun); this.sun = sun;
     const corona = new THREE.Sprite(new THREE.SpriteMaterial({ map: coronaTexture(), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
-    corona.scale.setScalar(SUN.radius * 7); sun.add(corona);
+    corona.scale.setScalar(SUN.radius * 3.5); sun.add(corona); this.corona = corona;
     this.bodies.set("sun", { def: SUN, holder: sun, radius: SUN.radius, getWorldPosition: (v) => v.set(0, 0, 0) });
 
     // ---- étoiles ----
@@ -133,7 +134,8 @@ export class SolarSystem {
     const holder = new THREE.Group(); holder.position.x = def.distance; pivot.add(holder);
     const tilt = new THREE.Group(); tilt.rotation.z = THREE.MathUtils.degToRad(def.tilt || 0); holder.add(tilt);
 
-    const geo = new THREE.SphereGeometry(def.radius, 64, 48);
+    const seg = def.radius > 300 ? 128 : def.radius > 50 ? 96 : 64;
+    const geo = new THREE.SphereGeometry(def.radius, seg, Math.round(seg / 2));
     let mesh;
     if (def.key === "earth") {
       const mat = new THREE.ShaderMaterial({
@@ -230,7 +232,7 @@ export class SolarSystem {
     const N = 9000, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
     const c = new THREE.Color();
     for (let i = 0; i < N; i++) {
-      const r = 18000 + Math.random() * 9000;
+      const r = 2.0e8 + Math.random() * 3.5e8;
       const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
       pos[i * 3] = r * s * Math.cos(th); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(th);
       const t = Math.random();
@@ -246,26 +248,37 @@ export class SolarSystem {
   }
 
   // ---------- boucle ----------
+  // À l'échelle réelle, le mouvement orbital ferait « fuir » une planète hors de
+  // portée pendant un scan -> orbites figées, mais rotation propre conservée (vivant).
   update(dt) {
-    const ORBIT = 0.35, SPIN = 8;          // orbites lentes (jouable), rotation propre vive
+    this._t += dt;
     for (const [, b] of this.bodies) {
       const def = b.def;
       if (!def || def.key === "sun" || def.key === "moon") continue;
-      const pivot = b.holder.parent;        // pivot orbital
-      if (pivot && def.distance) pivot.rotation.y += (def.orbSpeed || 0) * dt * ORBIT;
+      const pivot = b.holder.parent;
       const spin = pivot && pivot.userData ? pivot.userData.spin : null;
-      if (spin) spin.rotation.y += (def.rotSpeed || 0) * dt * SPIN;
+      if (spin) spin.rotation.y += (def.rotSpeed || 0) * dt;
     }
-    for (const cl of this._clouds) cl.rotation.y += 0.006 * dt * SPIN;
-    if (this._moon) { this._moon.pivot.rotation.y += this._moon.def.orbSpeed * dt * 1.5; this._moon.spin.rotation.y += this._moon.def.rotSpeed * dt * SPIN; }
-    if (this.stars) this.stars.rotation.y += 0.00001 * dt * 60;
+    for (const cl of this._clouds) cl.rotation.y += 0.006 * dt;
+    if (this._moon) this._moon.spin.rotation.y += this._moon.def.rotSpeed * dt;
+    if (this.stars) this.stars.rotation.y += 1e-6 * dt;
+    if (this.sun) this.sun.rotation.y += 0.006 * dt;
+    if (this.corona) this.corona.scale.setScalar(SUN.radius * 3.5 * (0.93 + Math.sin(this._t * 1.5) * 0.05));
 
-    // direction du Soleil pour les shaders (Soleil à l'origine)
-    for (const m of this._earthMats) {
-      const b = this.bodies.get("earth"); b.getWorldPosition(this._tmp);
-      m.uniforms.sunPos.value.set(0, 0, 0);
-    }
+    // Soleil à l'origine -> direction de lumière pour les shaders custom
+    for (const m of this._earthMats) m.uniforms.sunPos.value.set(0, 0, 0);
     for (const m of this._atmoMats) m.uniforms.sunPos.value.set(0, 0, 0);
+  }
+
+  // distance à la surface du corps le plus proche (pilote la distorsion + le HUD)
+  nearestSurface(pos) {
+    let bd = Infinity, bk = null, bb = null;
+    for (const [key, b] of this.bodies) {
+      b.getWorldPosition(this._tmp);
+      const dsurf = pos.distanceTo(this._tmp) - b.radius;
+      if (dsurf < bd) { bd = dsurf; bk = key; bb = b; }
+    }
+    return { dist: Math.max(0, bd), key: bk, body: bb };
   }
 
   // util : position monde + rayon d'un corps
