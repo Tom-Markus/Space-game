@@ -71,10 +71,12 @@ export class Ship {
 
   _build() {
     const model = new THREE.Group(); this.model = model;
-    const hull = new THREE.MeshStandardMaterial({ color: 0xc4cedd, metalness: 0.88, roughness: 0.33 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x252c39, metalness: 0.78, roughness: 0.5 });
-    const trim = new THREE.MeshStandardMaterial({ color: 0xff7a1f, metalness: 0.45, roughness: 0.5, emissive: 0x3a1500, emissiveIntensity: 0.5 });
-    const glass = new THREE.MeshStandardMaterial({ color: 0x0a2546, metalness: 0.25, roughness: 0.05, emissive: 0x1f64b0, emissiveIntensity: 0.7 });
+    // Métallisme/rugosité modérés : sans environnement réfléchi, un metalness élevé donne
+    // une coque noire sauf face au Soleil où elle « brûle ». Réglages plus mats = plus réaliste.
+    const hull = new THREE.MeshStandardMaterial({ color: 0xb8c2d2, metalness: 0.35, roughness: 0.6 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x252c39, metalness: 0.3, roughness: 0.7 });
+    const trim = new THREE.MeshStandardMaterial({ color: 0xff7a1f, metalness: 0.2, roughness: 0.55, emissive: 0x3a1500, emissiveIntensity: 0.4 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x0a2546, metalness: 0.4, roughness: 0.18, emissive: 0x1f64b0, emissiveIntensity: 0.5 });
     this.glow = new THREE.MeshBasicMaterial({ color: 0x7fe6ff, toneMapped: false });
     const nozTex = radialGlowTexture();
 
@@ -235,6 +237,7 @@ export class Ship {
       ramp = w.ramp;
     } else if (this.boosting) {
       target = SHIP.boostMax;
+      ramp = SHIP.boostRamp;                              // rampe propre à la postcombustion
     } else if (thr > 0) {
       target = SHIP.cruiseMax * thr;
     } else if (thr < 0) {

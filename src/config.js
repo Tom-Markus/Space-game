@@ -19,7 +19,7 @@ export const SUN = {
   name: "Soleil",
   radius: r(696340),
   map: TEX + "sun.jpg",                                 // conservé (sa luminosité masque la texture)
-  light: { color: 0xfff4e4, intensity: 4.5 },
+  light: { color: 0xfff4e4, intensity: 2.4 },
   fact: "Étoile naine jaune — 99,86 % de la masse du Système Solaire.",
 };
 
@@ -34,7 +34,7 @@ export const PLANETS = [
   {
     key: "venus", name: "Vénus", map: NEW + "tom_venus_atmosphere.jpg",
     radius: r(6052), distance: d(108200000), orbSpeed: 0.0088, rotSpeed: -0.0012, tilt: 177.4, color: 0xd8b87a,
-    atmosphere: { color: 0xf3d28c, power: 2.7, size: 1.028 },
+    atmosphere: { color: 0xf6d99a, power: 5.5, size: 1.013 },
     fact: "Rotation rétrograde, 465 °C sous des nuages d'acide sulfurique.",
     mission: { type: "scan", verb: "probe", hold: 3.5, reward: 240,
       title: "Sonde atmosphérique", desc: "Larguez une sonde dans l'épaisse atmosphère de Vénus." },
@@ -44,7 +44,7 @@ export const PLANETS = [
     night: NEW + "tom_earth_nightmap.jpg", clouds: NEW + "tom_earth_clouds.jpg",
     normal: NEW + "tom_earth_normal_map.jpg", spec: NEW + "tom_earth_specular_map.jpg",
     radius: r(6371), distance: d(149600000), orbSpeed: 0.0075, rotSpeed: 0.03, tilt: 23.44, color: 0x2a6fb0,
-    atmosphere: { color: 0x6db8ff, power: 2.9, size: 1.022 },
+    atmosphere: { color: 0x69a6ff, power: 6.0, size: 1.011 },
     fact: "Notre berceau : 71 % de la surface couverte d'océans.",
     moon: { name: "Lune", map: NEW + "tom_moon.jpg", radius: r(1737), distance: d(384400), orbSpeed: 0.02, rotSpeed: 0.01 },
     mission: { type: "scan", verb: "scan", hold: 2.5, reward: 150,
@@ -60,7 +60,7 @@ export const PLANETS = [
   {
     key: "mars", name: "Mars", map: NEW + "tom_mars.jpg",
     radius: r(3390), distance: d(227900000), orbSpeed: 0.0061, rotSpeed: 0.029, tilt: 25.19, color: 0xc1502e,
-    atmosphere: { color: 0xff9b6b, power: 3.2, size: 1.02 },
+    atmosphere: { color: 0xf0a884, power: 5.5, size: 1.012 },
     fact: "La planète rouge : Olympus Mons culmine à 22 km.",
     mission: { type: "scan", verb: "sample", hold: 4.0, reward: 300,
       title: "Recherche de glace", desc: "Prélevez des échantillons à la surface martienne." },
@@ -91,7 +91,7 @@ export const PLANETS = [
   {
     key: "neptune", name: "Neptune", map: NEW + "tom_neptune.jpg",
     radius: r(24622), distance: d(4495000000), orbSpeed: 0.0013, rotSpeed: 0.038, tilt: 28.32, color: 0x3a66d6,
-    atmosphere: { color: 0x4f7dff, power: 2.9, size: 1.026 },
+    atmosphere: { color: 0x5a8cff, power: 5.5, size: 1.014 },
     fact: "Vents les plus violents du Système Solaire : 2 100 km/h.",
     mission: { type: "scan", verb: "scan", hold: 4.5, reward: 400,
       title: "Tempêtes de Neptune", desc: "Analysez les vents supersoniques de la dernière géante." },
@@ -130,7 +130,11 @@ export const PLANETS = [
 // ---- Vaisseau (1 u = 100 m) & pilotage ----
 export const SHIP = {
   size: 1,
-  cruiseMax: 5000, boostMax: 60000, accel: 5000, decel: 1.4, reverse: 0.5,
+  cruiseMax: 5000, boostMax: 60000,
+  // Rampes : la vitesse interpole vers la cible avec un lerp factor = min(1, dt*ramp).
+  // Plus ramp est faible, plus la montée est progressive. boostRamp ~1.5 -> ~1 s
+  // pour atteindre 95 % de la vitesse max -> postcombustion fluide, pas instantanée.
+  accel: 2.5, boostRamp: 1.5, decel: 1.4, reverse: 0.5,
   warp: { factor: 0.8, min: 5000, max: 5.0e9, engageDist: 3.0e5, ramp: 2.5 },
   yawRate: 0.85, pitchRate: 0.85, mouseSens: 0.0016, autoLevel: 2.6,
   cam: { dist: 3.6, height: 1.25, lag: 9, lookAhead: 5.5 },

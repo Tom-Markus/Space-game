@@ -9,7 +9,9 @@ export function createStage(canvas) {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  // exposition légèrement réduite : compense la baisse d'intensité de lumière
+  // côté éclairé sans assombrir le côté nuit (qui reste dominé par l'ambient).
+  renderer.toneMappingExposure = 0.95;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
@@ -20,7 +22,9 @@ export function createStage(canvas) {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.5, 0.82);
+  // strength / radius / threshold : bloom plus doux pour éviter qu'une petite
+  // source brillante (Soleil lointain) ne se transforme en tache carrée saturée.
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.7, 0.88);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 

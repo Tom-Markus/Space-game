@@ -10,6 +10,10 @@ const HELD_BIND = {
   ArrowLeft: "yawL", ArrowRight: "yawR",
 };
 const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause" };
+// Fallback sur le glyphe imprimé (e.key) — indispensable en AZERTY/QWERTZ où la
+// touche marquée « M » envoie e.code = "Semicolon", pas "KeyM".
+const HELD_KEY = { w: "forward", z: "forward", s: "back", e: "interact" };
+const PRESS_KEY = { m: "map", h: "help", p: "pause" };
 
 export class Input {
   constructor(canvas) {
@@ -30,15 +34,18 @@ export class Input {
   _emit(cmd) { (this._press[cmd] || []).forEach((f) => f()); }
 
   _bindKeyboard() {
+    const lookupPress = (e) => PRESS_BIND[e.code] || PRESS_KEY[(e.key || "").toLowerCase()];
+    const lookupHeld = (e) => HELD_BIND[e.code] || HELD_KEY[(e.key || "").toLowerCase()];
     addEventListener("keydown", (e) => {
-      if (PRESS_BIND[e.code]) { if (this.enabled) this._emit(PRESS_BIND[e.code]); e.preventDefault(); return; }
-      const c = HELD_BIND[e.code];
+      const pcmd = lookupPress(e);
+      if (pcmd) { if (this.enabled) this._emit(pcmd); e.preventDefault(); return; }
+      const c = lookupHeld(e);
       if (!c) return;
       if (!this.held.has(c) && c === "interact" && this.enabled) this._emit("interact");
       this.held.add(c);
       if (this.enabled) e.preventDefault();
     });
-    addEventListener("keyup", (e) => { const c = HELD_BIND[e.code]; if (c) this.held.delete(c); });
+    addEventListener("keyup", (e) => { const c = lookupHeld(e); if (c) this.held.delete(c); });
     addEventListener("blur", () => this.held.clear());
   }
 

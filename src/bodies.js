@@ -35,14 +35,17 @@ void main(){
   float ocean = texture2D(specMap, vUv).r;
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 H = normalize(L + V);
-  float spec = pow(max(dot(N,H),0.0), 30.0) * ocean * clamp(ndl*3.0,0.0,1.0);
-  vec3 col = mix(nightC * 1.6, dayC, day);
-  col += vec3(0.7,0.85,1.0) * spec * 0.7;
-  col *= mix(0.9, 1.12, day);
+  // spéculaire océan : Blinn-Phong étroit, contribution modérée -> pas de « brûlure »
+  float spec = pow(max(dot(N,H),0.0), 80.0) * ocean * clamp(ndl*3.0,0.0,1.0);
+  vec3 col = mix(nightC * 1.4, dayC, day);
+  col += vec3(0.7,0.85,1.0) * spec * 0.28;
+  col *= mix(0.92, 1.04, day);
   gl_FragColor = vec4(col, 1.0);
 }`;
 
 const ATMO_VERT = EARTH_VERT;
+// Atmosphère vue depuis l'espace : liseré FIN qui suit le limbe côté éclairé,
+// qui se fond dans la nuit et s'efface vers l'intérieur du disque.
 const ATMO_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
@@ -53,23 +56,23 @@ void main(){
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(sunPos - vWorldPos);
-  float ndv = abs(dot(N, V));
-  float fres = 1.0 - ndv;
-  // deux bandes : halo doux + liseré dense qui épouse le bord de la planète
-  float rim  = pow(fres, power);
-  float edge = pow(fres, power * 2.6);
+  // épaisseur optique : très concentrée au bord (Fresnel élevé) pour rester
+  // un fin liseré collé au limbe, comme sur les photos satellites.
+  float fres = 1.0 - max(dot(N, V), 0.0);
+  float rim = pow(fres, power);
+  // éclairage : doit s'éteindre proprement côté nuit
   float ndl = dot(N, L);
-  float day = smoothstep(-0.30, 0.24, ndl);                 // jour / nuit progressif
-  // diffusion vers l'avant : le limbe côté Soleil brille bien davantage (effet de halo)
-  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 3.0);
-  // teinte « coucher de soleil » près du terminateur
-  float dusk = smoothstep(0.0, 0.5, 1.0 - abs(ndl)) * day;
+  float day = smoothstep(-0.08, 0.30, ndl);
+  // diffusion vers l'avant : limbe orange/rose côté Soleil, blanc froid ailleurs
+  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 4.0);
+  // teinte « coucher de soleil » au terminateur seulement
+  float dusk = smoothstep(0.25, 0.65, 1.0 - abs(ndl)) * day;
   vec3 base = glowColor;
-  vec3 col = mix(base, base * vec3(1.7, 0.8, 0.5) + vec3(0.14, 0.03, 0.0), dusk * 0.85);
-  col = mix(col, col * 1.6 + vec3(0.05, 0.09, 0.12), forward * day * 0.9);
-  col += base * edge * day * 0.45;                           // bord éclairé qui ressort
-  float a = (rim * 0.5 + edge * 0.95) * (0.10 + 0.95 * day) * (0.6 + 0.7 * forward);
-  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+  vec3 col = base;
+  col = mix(col, base * vec3(1.4, 0.8, 0.55) + vec3(0.08, 0.02, 0.0), dusk * 0.6);
+  col += base * forward * day * 0.35;
+  float a = rim * day * (0.55 + 0.6 * forward);
+  gl_FragColor = vec4(col, clamp(a, 0.0, 0.95));
 }`;
 
 const RING_FRAG = `
@@ -111,25 +114,35 @@ void main(){
 }`;
 
 // Dégradé radial doux et haute résolution (anti-banding) pour les halos lumineux.
+// Le dégradé descend à 0 bien avant le bord du canvas (rayon utile ~46%) — combiné
+// à mipmaps désactivés + clampToEdge, cela évite tout liseré carré sous le bloom.
 function glowTexture(stops, s = 512) {
   const cv = document.createElement("canvas"); cv.width = cv.height = s;
   const ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, s, s);
   const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
   for (const [o, c] of stops) g.addColorStop(o, c);
   ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.generateMipmaps = false;
+  t.minFilter = THREE.LinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
 }
-// Cœur dense et chaud autour du disque solaire.
+// Cœur dense et chaud autour du disque solaire (dégradé qui s'éteint avant le bord).
 const SUN_CORE = [
-  [0.00, "rgba(255,251,238,1.0)"], [0.10, "rgba(255,245,214,0.96)"],
-  [0.24, "rgba(255,221,158,0.70)"], [0.42, "rgba(255,186,104,0.34)"],
-  [0.62, "rgba(255,156,74,0.12)"], [0.82, "rgba(255,140,60,0.03)"], [1.0, "rgba(255,140,60,0.0)"],
+  [0.00, "rgba(255,251,238,1.0)"], [0.08, "rgba(255,245,214,0.92)"],
+  [0.20, "rgba(255,221,158,0.55)"], [0.34, "rgba(255,186,104,0.22)"],
+  [0.48, "rgba(255,156,74,0.07)"], [0.62, "rgba(255,140,60,0.015)"],
+  [0.78, "rgba(255,140,60,0.0)"], [1.0, "rgba(255,140,60,0.0)"],
 ];
 // Halo externe très diffus (toujours rond — reste visible et lisse à grande distance).
 const SUN_HALO = [
-  [0.00, "rgba(255,247,224,0.62)"], [0.16, "rgba(255,232,184,0.32)"],
-  [0.36, "rgba(255,204,138,0.14)"], [0.60, "rgba(255,180,104,0.05)"],
-  [0.82, "rgba(255,166,88,0.014)"], [1.0, "rgba(255,160,80,0.0)"],
+  [0.00, "rgba(255,247,224,0.45)"], [0.12, "rgba(255,232,184,0.22)"],
+  [0.28, "rgba(255,204,138,0.085)"], [0.46, "rgba(255,180,104,0.025)"],
+  [0.62, "rgba(255,166,88,0.006)"], [0.78, "rgba(255,160,80,0.0)"], [1.0, "rgba(255,160,80,0.0)"],
 ];
 function makeGlowSprite(stops) {
   // depthWrite false + depthTest true : le halo se fond autour du disque et reste
@@ -184,7 +197,7 @@ export class SolarSystem {
     scene.add(new THREE.AmbientLight(0x14223c, 0.025));
 
     // ---- Soleil ----
-    const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(1.25, 1.15, 0.95) });
+    const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(1.0, 0.92, 0.78) });
     const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 64, 48), sunMat);
     scene.add(sun); this.sun = sun;
     // halo solaire en deux couches : un cœur dense + un voile diffus.
@@ -361,8 +374,13 @@ export class SolarSystem {
     if (this.sunGlow && camera) {
       const d = Math.max(camera.position.length(), SUN.radius);   // Soleil à l'origine
       const pulse = 0.97 + Math.sin(this._t * 1.5) * 0.03;
-      this.sunGlow.core.scale.setScalar(Math.max(SUN.radius * 3.4, d * 0.062) * pulse);
-      this.sunGlow.halo.scale.setScalar(Math.max(SUN.radius * 9.5, d * 0.17) * pulse);
+      // Taille proportionnelle au disque solaire vu : grandit légèrement avec la
+      // distance pour rester visible, mais reste TOUJOURS proche du diamètre apparent
+      // -> jamais une « grosse boule » carrée bloomée loin du Soleil.
+      const coreMin = SUN.radius * 2.6, haloMin = SUN.radius * 6.0;
+      const coreD = d * 0.025, haloD = d * 0.065;
+      this.sunGlow.core.scale.setScalar(Math.max(coreMin, coreD) * pulse);
+      this.sunGlow.halo.scale.setScalar(Math.max(haloMin, haloD) * pulse);
     }
 
     // Soleil à l'origine -> direction de lumière pour les shaders custom
