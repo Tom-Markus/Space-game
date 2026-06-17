@@ -7,7 +7,7 @@
 // ===================================================================
 const TEX = "./assets/textures/";                       // anciennes (Soleil, Pluton, anneaux couleur)
 // Qualité des textures choisie au menu (mémorisée). Détermine le dossier des cartes "tom_".
-const Q = (typeof localStorage !== "undefined" && localStorage.getItem("texQuality")) || "ultra";
+const Q = (typeof localStorage !== "undefined" && localStorage.getItem("texQuality")) || "perf";
 const QDIR = { ultra: "nouvelles_textures", high: "nouvelles_textures_4k", perf: "nouvelles_textures_2k" }[Q] || "nouvelles_textures";
 const NEW = `./assets/textures/${QDIR}/`;
 export const QUALITY = Q;
