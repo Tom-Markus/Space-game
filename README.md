@@ -11,7 +11,8 @@ Terre, océans spéculaires, nuages, atmosphères, anneaux de Saturne et d'Uranu
 solaire avec *bloom*, et un fond de **Voie lactée** réelle (ambiance « ISS » : ciel quasi noir).
 
 Textures haute définition **8K** fournies par l'utilisateur (cartes `tom_`) avec filtrage
-anisotrope, pour un maximum de netteté de près (prévoir un GPU correct : ~2 Go de VRAM).
+anisotrope. Un **sélecteur de qualité** dans le menu (Ultra 8K / Élevé 4K / Perf 2K)
+adapte la résolution chargée à la machine — chaque mode ne télécharge que sa résolution.
 Bonus : 4 **planètes naines** explorables — Cérès, Hauméa, Makémaké, Éris — à leur vraie distance.
 
 ## 📐 Échelle — à taille réelle

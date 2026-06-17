@@ -6,7 +6,11 @@
 //  Textures : nouvelles cartes "tom_" fournies par l'utilisateur (sauf Soleil/Pluton).
 // ===================================================================
 const TEX = "./assets/textures/";                       // anciennes (Soleil, Pluton, anneaux couleur)
-const NEW = "./assets/textures/nouvelles_textures/";    // nouvelles cartes haute déf.
+// Qualité des textures choisie au menu (mémorisée). Détermine le dossier des cartes "tom_".
+const Q = (typeof localStorage !== "undefined" && localStorage.getItem("texQuality")) || "ultra";
+const QDIR = { ultra: "nouvelles_textures", high: "nouvelles_textures_4k", perf: "nouvelles_textures_2k" }[Q] || "nouvelles_textures";
+const NEW = `./assets/textures/${QDIR}/`;
+export const QUALITY = Q;
 export const S = 10;
 const r = (km) => +(km * S).toFixed(1);
 const d = (km) => Math.round(km * S);

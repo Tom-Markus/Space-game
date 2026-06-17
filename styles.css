@@ -46,6 +46,16 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   box-shadow:0 6px 26px rgba(60,180,250,.4)}
 .hint{color:#7990b6;font-size:12.5px;margin:1em 0 0}
 
+.quality{margin:4px auto 18px;max-width:520px}
+.q-label{display:block;font-size:10px;letter-spacing:.22em;color:#8fa8cd;margin-bottom:8px}
+.q-opts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.q-opt{cursor:pointer;font-family:var(--ui);font-size:13px;letter-spacing:.05em;color:#bcd0ee;
+  background:rgba(22,44,76,.45);border:1px solid var(--brd);border-radius:8px;padding:9px 16px;transition:.15s}
+.q-opt:hover{border-color:var(--brd-hi);background:rgba(40,90,150,.5)}
+.q-opt.active{background:linear-gradient(90deg,#2b8fc6,var(--accent));color:#031018;font-weight:800;border:0;
+  box-shadow:0 0 18px rgba(60,180,250,.45)}
+.q-hint{font-size:11.5px;color:#7990b6;margin:10px 0 0;min-height:1.2em}
+
 .controls-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px 24px;margin:8px auto 22px;max-width:580px;text-align:left}
 .controls-grid .row{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;color:#bcd0ee;
   border-bottom:1px solid rgba(120,160,210,.12);padding:6px 2px}

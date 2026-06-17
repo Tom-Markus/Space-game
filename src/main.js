@@ -6,7 +6,7 @@ import { Missions } from "./missions.js";
 import { Hud } from "./hud.js";
 import { Input } from "./input.js";
 import { applyStaticStrings, T } from "./strings.js";
-import { SHIP, SCALE } from "./config.js";
+import { SHIP, SCALE, QUALITY } from "./config.js";
 
 applyStaticStrings();
 
@@ -27,6 +27,25 @@ let lastNav = { dist: 1e9, key: null };
 
 hud.buildControls(document.getElementById("controlsGrid"), T("controls"));
 hud.buildHelp(document.getElementById("help"), T("controls"));
+
+// ---- sélecteur de qualité des textures (recharge la page au changement) ----
+(function setupQuality() {
+  const hints = T("qualityHints");
+  const sel = document.getElementById("qualitySel");
+  const hint = document.getElementById("qHint");
+  const show = (q) => { hint.textContent = hints[q] || ""; };
+  sel.querySelectorAll(".q-opt").forEach((b) => {
+    if (b.dataset.q === QUALITY) b.classList.add("active");
+    b.addEventListener("click", () => {
+      if (b.dataset.q === QUALITY) return;
+      try { localStorage.setItem("texQuality", b.dataset.q); } catch (e) {}
+      location.reload();
+    });
+    b.addEventListener("mouseenter", () => show(b.dataset.q));
+    b.addEventListener("mouseleave", () => show(QUALITY));
+  });
+  show(QUALITY);
+})();
 
 // ---- chargement ----
 system = new SolarSystem(scene);

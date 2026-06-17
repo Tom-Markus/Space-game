@@ -5,6 +5,12 @@ export const STRINGS = {
     tagline: "Pilotez votre vaisseau à la 3ᵉ personne dans un Système Solaire à l'échelle réelle et accomplissez une mission sur chaque astre. La vitesse de distorsion franchit les distances immenses.",
     startBtn: "DÉCOLLAGE",
     startHint: "La souris pilote, l'horizon se stabilise tout seul. Maintenez Espace pour la distorsion — elle ralentit automatiquement près des astres.",
+    qualityTag: "QUALITÉ DES TEXTURES",
+    qualityHints: {
+      ultra: "8192 px — netteté maximale (~2 Go de VRAM, chargement plus long). Idéal sur PC.",
+      high: "4096 px — très bon compromis qualité / performance.",
+      perf: "2048 px — chargement rapide, compatible GPU modestes et mobiles.",
+    },
     missionTag: "MISSION",
     journalTag: "JOURNAL DE BORD",
     creditsTag: "Crédits",
