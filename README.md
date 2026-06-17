@@ -60,7 +60,11 @@ L'horizon se **stabilise automatiquement** (anti-nausée) : pas de roulis à gé
 | **Distorsion (super-boost)** | **Espace** (maintenir) |
 | Analyser / Atterrir | **E** (maintenir) |
 | Orienter (alternatif) | **Flèches** |
-| Carte / Aide / Pause | **M** / **H** / **Échap** |
+| Carte du système / Aide / Pause | **M** / **H** / **Échap** |
+
+La touche **M** (ou un clic sur le radar) ouvre la **carte du système** en plein écran :
+cliquez un astre pour en faire votre **cap**. De retour au pilotage, une **flèche** vous
+y guide en permanence, indépendamment de la mission en cours.
 
 La **distorsion** accélère énormément en espace ouvert puis **ralentit toute seule** près
 d'un astre — c'est ainsi qu'on franchit les distances réelles. Manette et tactile gérés.

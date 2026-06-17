@@ -82,18 +82,21 @@ export class Hud {
     });
   }
 
-  updateTargetMarker(camera, world, name, distU) {
+  updateTargetMarker(camera, world, name, distU, isNav = false) {
     if (!world) { this.el.marker.style.display = "none"; this.el.arrow.style.display = "none"; return; }
     const W = innerWidth, H = innerHeight;
     const cam = world.clone().applyMatrix4(camera.matrixWorldInverse);
     const inFront = cam.z < 0;
     this._v.copy(world).project(camera);
     const sx = (this._v.x * 0.5 + 0.5) * W, sy = (-this._v.y * 0.5 + 0.5) * H;
+    const label = isNav ? "⌖ " + name : name;
+    this.el.marker.classList.toggle("nav", isNav);
+    this.el.arrow.classList.toggle("nav", isNav);
     if (inFront && sx >= 26 && sx <= W - 26 && sy >= 76 && sy <= H - 96) {
       this.el.arrow.style.display = "none";
       this.el.marker.style.display = "flex";
       this.el.marker.style.left = sx + "px"; this.el.marker.style.top = sy + "px";
-      this.el.markerName.textContent = name; this.el.markerDist.textContent = fmtKm(distU * KM);
+      this.el.markerName.textContent = label; this.el.markerDist.textContent = fmtKm(distU * KM);
     } else {
       this.el.marker.style.display = "none";
       this.el.arrow.style.display = "flex";
@@ -102,7 +105,7 @@ export class Hud {
       this.el.arrow.style.left = (W / 2 + Math.cos(ang) * R) + "px";
       this.el.arrow.style.top = (H / 2 - Math.sin(ang) * R) + "px";
       this.el.arrow.firstElementChild.style.transform = `rotate(${90 - ang * 180 / Math.PI}deg)`;
-      this.el.arrowDist.textContent = name + " · " + fmtKm(distU * KM);
+      this.el.arrowDist.textContent = label + " · " + fmtKm(distU * KM);
     }
   }
 

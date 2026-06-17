@@ -180,7 +180,8 @@ export class Ship {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: nozTex, color: 0x66ddff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.position.set(0, -0.05, 2.6); model.add(halo); this.halo = halo;
 
-    model.scale.setScalar(SHIP.size / 6);   // corps ≈ 1 u = 100 m (référence d'échelle)
+    // coque ≈ 6,5 u de base -> /6.5 = exactement 1 u = 100 m (référence d'échelle)
+    model.scale.setScalar(SHIP.size / 6.5);
     this.group.add(model);
   }
 

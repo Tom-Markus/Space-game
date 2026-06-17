@@ -4,6 +4,7 @@ import { SolarSystem } from "./bodies.js";
 import { Ship } from "./ship.js";
 import { Missions } from "./missions.js";
 import { Hud } from "./hud.js";
+import { StarMap } from "./starmap.js";
 import { Input } from "./input.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
@@ -17,7 +18,8 @@ const hud = new Hud();
 const input = new Input(canvas);
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
 
-let system, ship, missions;
+let system, ship, missions, starmap;
+let navTarget = null;                    // cap choisi par le joueur via la carte
 let state = "loading";
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
@@ -56,6 +58,7 @@ system.load((p) => {
   document.getElementById("loadlabel").textContent = pct + "%";
 }).then(() => {
   ship = new Ship(scene);
+  starmap = new StarMap(system, (key) => { navTarget = key; }, closeMap);
   placeShipStart();
   document.getElementById("loading").classList.add("hidden");
   document.getElementById("start").classList.remove("hidden");
@@ -105,6 +108,19 @@ function resumeGame() {
   if (!isTouch) input.requestLock();
 }
 
+function openMap() {
+  if (state !== "playing" || !starmap) return;
+  state = "map"; input.enabled = false; input.exitLock();
+  document.body.classList.remove("warping");
+  starmap.show(ship, navTarget);
+}
+function closeMap() {
+  if (state !== "map") return;
+  starmap.close();
+  input.enabled = true; state = "playing"; last = performance.now();
+  if (!isTouch) input.requestLock();
+}
+
 function onWin(credits) {
   state = "win"; input.enabled = false; input.exitLock();
   document.body.classList.remove("warping");
@@ -127,8 +143,9 @@ canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 input.onPress("unlock", () => { if (state === "playing") pauseGame(); });
 input.onPress("pause", () => (state === "playing" ? pauseGame() : state === "paused" ? resumeGame() : null));
-input.onPress("map", () => document.getElementById("radar").classList.toggle("hidden"));
+input.onPress("map", openMap);
 input.onPress("help", () => document.getElementById("help").classList.toggle("hidden"));
+document.getElementById("radar").addEventListener("click", openMap);
 addEventListener("blur", () => pauseGame());
 
 // ---- boucle ----
@@ -159,11 +176,12 @@ function frame(now) {
     const nb = lastNav.key && system.bodies.get(lastNav.key);
     hud.setNav(nb ? nb.def.name : null, lastNav.dist);
 
-    const tk = missions.activeKey;
+    // cap manuel (carte) prioritaire, sinon objectif de mission
+    const tk = (navTarget && system.bodies.has(navTarget)) ? navTarget : missions.activeKey;
     if (tk) {
       const b = system.bodies.get(tk);
       b.getWorldPosition(tmp);
-      hud.updateTargetMarker(camera, tmp, b.def.name, Math.max(0, ship.group.position.distanceTo(tmp) - b.radius));
+      hud.updateTargetMarker(camera, tmp, b.def.name, Math.max(0, ship.group.position.distanceTo(tmp) - b.radius), tk === navTarget);
     } else hud.updateTargetMarker(camera, null);
     hud.updateMinimap(system, ship, tk);
   } else if (system) {

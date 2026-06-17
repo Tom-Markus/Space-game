@@ -133,7 +133,7 @@ export const SHIP = {
   cruiseMax: 5000, boostMax: 60000, accel: 5000, decel: 1.4, reverse: 0.5,
   warp: { factor: 0.8, min: 5000, max: 5.0e9, engageDist: 3.0e5, ramp: 2.5 },
   yawRate: 0.85, pitchRate: 0.85, mouseSens: 0.0016, autoLevel: 2.6,
-  cam: { dist: 2.6, height: 0.9, lag: 9, lookAhead: 4 },
+  cam: { dist: 3.6, height: 1.25, lag: 9, lookAhead: 5.5 },
   startOffsetR: 2.2,
 };
 
