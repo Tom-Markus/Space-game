@@ -69,6 +69,31 @@ void main(){
   gl_FragColor = vec4(toLin(c.rgb), a);
 }`;
 
+const SKY_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+  #include <logdepthbuf_vertex>
+}`;
+const SKY_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform sampler2D map; uniform float bright; uniform float contrast; uniform float satur; uniform vec3 tint;
+varying vec2 vUv;
+void main(){
+  #include <logdepthbuf_fragment>
+  vec3 c = texture2D(map, vUv).rgb;
+  c = pow(max(c, 0.0), vec3(2.2));                 // sRGB -> linéaire
+  c = pow(max(c, 0.0), vec3(contrast));            // contraste : ciel profond, bande qui ressort
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  c = mix(vec3(l), c, satur);                      // saturation
+  c *= bright * tint;
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
 function coronaTexture() {
   const s = 256, cv = document.createElement("canvas"); cv.width = cv.height = s;
   const ctx = cv.getContext("2d");
@@ -254,15 +279,22 @@ export class SolarSystem {
   }
 
   _buildSkybox() {
-    // Voie lactée réelle en fond, volontairement assombrie -> ambiance « ISS » :
-    // ciel quasi noir, pas de grosses étoiles criardes, juste la bande galactique.
-    const tex = this.tex[SKYBOX];
+    // Voie lactée réelle, retravaillée par shader : ciel profond + bande galactique
+    // contrastée et colorée, léger halo (bloom) sur le cœur. Suit la caméra (à l'infini).
+    const tex = this._color(SKYBOX, false);
     if (!tex) return;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.MeshBasicMaterial({
-      map: tex, side: THREE.BackSide, color: 0x5a5a66, depthWrite: false, fog: false,
+    this.skyMat = new THREE.ShaderMaterial({
+      uniforms: {
+        map: { value: tex },
+        bright: { value: 1.85 },
+        contrast: { value: 1.4 },
+        satur: { value: 1.6 },
+        tint: { value: new THREE.Color(0.92, 0.95, 1.08) },   // ciel légèrement froid
+      },
+      vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
+      side: THREE.BackSide, depthWrite: false, fog: false,
     });
-    this.sky = new THREE.Mesh(new THREE.SphereGeometry(5.0e11, 64, 32), mat);
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(5.0e11, 96, 48), this.skyMat);
     this.sky.renderOrder = -1;
     this.scene.add(this.sky);
   }
