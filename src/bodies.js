@@ -54,17 +54,21 @@ void main(){
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(sunPos - vWorldPos);
   float ndv = abs(dot(N, V));
-  // épaisseur optique au limbe : dégradé doux du sol vers l'espace
-  float rim = pow(1.0 - ndv, power);
+  float fres = 1.0 - ndv;
+  // deux bandes : halo doux + liseré dense qui épouse le bord de la planète
+  float rim  = pow(fres, power);
+  float edge = pow(fres, power * 2.6);
   float ndl = dot(N, L);
-  float day = smoothstep(-0.35, 0.22, ndl);                 // jour / nuit progressif
+  float day = smoothstep(-0.30, 0.24, ndl);                 // jour / nuit progressif
   // diffusion vers l'avant : le limbe côté Soleil brille bien davantage (effet de halo)
   float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 3.0);
   // teinte « coucher de soleil » près du terminateur
-  float dusk = smoothstep(0.0, 0.55, 1.0 - abs(ndl)) * day;
-  vec3 col = mix(glowColor, glowColor * vec3(1.6, 0.85, 0.55) + vec3(0.12, 0.02, 0.0), dusk * 0.8);
-  col = mix(col, col * 1.5 + vec3(0.06, 0.08, 0.10), forward * day);
-  float a = rim * (0.12 + 0.95 * day) * (0.65 + 0.7 * forward);
+  float dusk = smoothstep(0.0, 0.5, 1.0 - abs(ndl)) * day;
+  vec3 base = glowColor;
+  vec3 col = mix(base, base * vec3(1.7, 0.8, 0.5) + vec3(0.14, 0.03, 0.0), dusk * 0.85);
+  col = mix(col, col * 1.6 + vec3(0.05, 0.09, 0.12), forward * day * 0.9);
+  col += base * edge * day * 0.45;                           // bord éclairé qui ressort
+  float a = (rim * 0.5 + edge * 0.95) * (0.10 + 0.95 * day) * (0.6 + 0.7 * forward);
   gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
@@ -123,8 +127,9 @@ const SUN_CORE = [
 ];
 // Halo externe très diffus (toujours rond — reste visible et lisse à grande distance).
 const SUN_HALO = [
-  [0.00, "rgba(255,243,216,0.55)"], [0.22, "rgba(255,224,168,0.24)"],
-  [0.50, "rgba(255,192,120,0.08)"], [0.78, "rgba(255,170,92,0.02)"], [1.0, "rgba(255,160,80,0.0)"],
+  [0.00, "rgba(255,247,224,0.62)"], [0.16, "rgba(255,232,184,0.32)"],
+  [0.36, "rgba(255,204,138,0.14)"], [0.60, "rgba(255,180,104,0.05)"],
+  [0.82, "rgba(255,166,88,0.014)"], [1.0, "rgba(255,160,80,0.0)"],
 ];
 function makeGlowSprite(stops) {
   // depthWrite false + depthTest true : le halo se fond autour du disque et reste
@@ -237,7 +242,7 @@ export class SolarSystem {
         alphaMap: this._color(def.clouds), color: 0xffffff, transparent: true,
         depthWrite: false, opacity: 0.92, roughness: 1, metalness: 0,
       });
-      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.012, 96, 64), cmat);
+      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.005, 96, 64), cmat);
       tilt.add(clouds);
       // décalage clair par rapport à la rotation propre de la planète -> dérive perceptible
       const drift = (def.rotSpeed || 0) + 0.018;
@@ -356,8 +361,8 @@ export class SolarSystem {
     if (this.sunGlow && camera) {
       const d = Math.max(camera.position.length(), SUN.radius);   // Soleil à l'origine
       const pulse = 0.97 + Math.sin(this._t * 1.5) * 0.03;
-      this.sunGlow.core.scale.setScalar(Math.max(SUN.radius * 3.2, d * 0.05) * pulse);
-      this.sunGlow.halo.scale.setScalar(Math.max(SUN.radius * 9.0, d * 0.13) * pulse);
+      this.sunGlow.core.scale.setScalar(Math.max(SUN.radius * 3.4, d * 0.062) * pulse);
+      this.sunGlow.halo.scale.setScalar(Math.max(SUN.radius * 9.5, d * 0.17) * pulse);
     }
 
     // Soleil à l'origine -> direction de lumière pour les shaders custom
