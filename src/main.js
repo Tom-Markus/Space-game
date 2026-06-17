@@ -148,7 +148,7 @@ function frame(now) {
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
     }
-    system.update(dt);
+    system.update(dt, camera);
     ship.updateCamera(dt, camera);
     camera.updateMatrixWorld();
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
@@ -167,7 +167,7 @@ function frame(now) {
     } else hud.updateTargetMarker(camera, null);
     hud.updateMinimap(system, ship, tk);
   } else if (system) {
-    system.update(dt * 0.4);
+    system.update(dt * 0.4, camera);
     if (ship) ship.updateCamera(dt, camera);
   }
 

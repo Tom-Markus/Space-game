@@ -13,7 +13,9 @@ void main(){
   vec4 wp = modelMatrix * vec4(position,1.0);
   vWorldPos = wp.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  gl_Position = projectionMatrix * viewMatrix * wp;
+  // gl_Position via modelViewMatrix (précalculé en double précision côté CPU) :
+  // évite le tremblement dû à la perte de précision float32 aux distances réelles.
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
   #include <logdepthbuf_vertex>
 }`;
 const EARTH_FRAG = `
@@ -51,9 +53,19 @@ void main(){
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(sunPos - vWorldPos);
-  float rim = pow(1.0 - abs(dot(N, V)), power);
-  float lit = clamp(dot(N, L) + 0.35, 0.0, 1.0);
-  gl_FragColor = vec4(glowColor, rim * lit);
+  float ndv = abs(dot(N, V));
+  // épaisseur optique au limbe : dégradé doux du sol vers l'espace
+  float rim = pow(1.0 - ndv, power);
+  float ndl = dot(N, L);
+  float day = smoothstep(-0.35, 0.22, ndl);                 // jour / nuit progressif
+  // diffusion vers l'avant : le limbe côté Soleil brille bien davantage (effet de halo)
+  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+  // teinte « coucher de soleil » près du terminateur
+  float dusk = smoothstep(0.0, 0.55, 1.0 - abs(ndl)) * day;
+  vec3 col = mix(glowColor, glowColor * vec3(1.6, 0.85, 0.55) + vec3(0.12, 0.02, 0.0), dusk * 0.8);
+  col = mix(col, col * 1.5 + vec3(0.06, 0.08, 0.10), forward * day);
+  float a = rim * (0.12 + 0.95 * day) * (0.65 + 0.7 * forward);
+  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
 const RING_FRAG = `
@@ -94,16 +106,34 @@ void main(){
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-function coronaTexture() {
-  const s = 256, cv = document.createElement("canvas"); cv.width = cv.height = s;
+// Dégradé radial doux et haute résolution (anti-banding) pour les halos lumineux.
+function glowTexture(stops, s = 512) {
+  const cv = document.createElement("canvas"); cv.width = cv.height = s;
   const ctx = cv.getContext("2d");
   const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0, "rgba(255,246,224,1)");
-  g.addColorStop(0.2, "rgba(255,228,170,0.85)");
-  g.addColorStop(0.45, "rgba(255,180,90,0.35)");
-  g.addColorStop(1, "rgba(255,150,60,0)");
+  for (const [o, c] of stops) g.addColorStop(o, c);
   ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// Cœur dense et chaud autour du disque solaire.
+const SUN_CORE = [
+  [0.00, "rgba(255,251,238,1.0)"], [0.10, "rgba(255,245,214,0.96)"],
+  [0.24, "rgba(255,221,158,0.70)"], [0.42, "rgba(255,186,104,0.34)"],
+  [0.62, "rgba(255,156,74,0.12)"], [0.82, "rgba(255,140,60,0.03)"], [1.0, "rgba(255,140,60,0.0)"],
+];
+// Halo externe très diffus (toujours rond — reste visible et lisse à grande distance).
+const SUN_HALO = [
+  [0.00, "rgba(255,243,216,0.55)"], [0.22, "rgba(255,224,168,0.24)"],
+  [0.50, "rgba(255,192,120,0.08)"], [0.78, "rgba(255,170,92,0.02)"], [1.0, "rgba(255,160,80,0.0)"],
+];
+function makeGlowSprite(stops) {
+  // depthWrite false + depthTest true : le halo se fond autour du disque et reste
+  // occulté par un corps opaque qui passerait devant le Soleil (éclipse), tout en
+  // s'affichant par-dessus la skybox (dessiné dans la passe transparente, après elle).
+  return new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(stops), blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false,
+  }));
 }
 
 export class SolarSystem {
@@ -152,8 +182,11 @@ export class SolarSystem {
     const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(1.25, 1.15, 0.95) });
     const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 64, 48), sunMat);
     scene.add(sun); this.sun = sun;
-    const corona = new THREE.Sprite(new THREE.SpriteMaterial({ map: coronaTexture(), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
-    corona.scale.setScalar(SUN.radius * 3.5); sun.add(corona); this.corona = corona;
+    // halo solaire en deux couches : un cœur dense + un voile diffus.
+    const core = makeGlowSprite(SUN_CORE); core.scale.setScalar(SUN.radius * 3.2);
+    const halo = makeGlowSprite(SUN_HALO); halo.scale.setScalar(SUN.radius * 9.0);
+    sun.add(halo); sun.add(core);
+    this.sunGlow = { core, halo };
     this.bodies.set("sun", { def: SUN, holder: sun, radius: SUN.radius, getWorldPosition: (v) => v.set(0, 0, 0) });
 
     // ---- fond galactique (Voie lactée) ----
@@ -198,14 +231,17 @@ export class SolarSystem {
     tilt.add(mesh);
     pivot.userData.spin = mesh; pivot.userData.def = def;
 
-    // nuages (Terre)
+    // nuages (Terre) : dérivent nettement plus vite que le sol (météo visible)
     if (def.clouds) {
       const cmat = new THREE.MeshStandardMaterial({
         alphaMap: this._color(def.clouds), color: 0xffffff, transparent: true,
-        depthWrite: false, opacity: 0.9, roughness: 1,
+        depthWrite: false, opacity: 0.92, roughness: 1, metalness: 0,
       });
-      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.015, 64, 48), cmat);
-      tilt.add(clouds); this._clouds.push(clouds);
+      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.012, 96, 64), cmat);
+      tilt.add(clouds);
+      // décalage clair par rapport à la rotation propre de la planète -> dérive perceptible
+      const drift = (def.rotSpeed || 0) + 0.018;
+      this._clouds.push({ mesh: clouds, speed: drift });
     }
     // atmosphère
     if (def.atmosphere) {
@@ -302,7 +338,7 @@ export class SolarSystem {
   // ---------- boucle ----------
   // À l'échelle réelle, le mouvement orbital ferait « fuir » une planète hors de
   // portée pendant un scan -> orbites figées, mais rotation propre conservée (vivant).
-  update(dt) {
+  update(dt, camera) {
     this._t += dt;
     for (const [, b] of this.bodies) {
       const def = b.def;
@@ -311,11 +347,18 @@ export class SolarSystem {
       const spin = pivot && pivot.userData ? pivot.userData.spin : null;
       if (spin) spin.rotation.y += (def.rotSpeed || 0) * dt;
     }
-    for (const cl of this._clouds) cl.rotation.y += 0.006 * dt;
+    for (const cl of this._clouds) cl.mesh.rotation.y += cl.speed * dt;
     if (this._moon) this._moon.spin.rotation.y += this._moon.def.rotSpeed * dt;
     if (this.stars) this.stars.rotation.y += 1e-6 * dt;
     if (this.sun) this.sun.rotation.y += 0.006 * dt;
-    if (this.corona) this.corona.scale.setScalar(SUN.radius * 3.5 * (0.93 + Math.sin(this._t * 1.5) * 0.05));
+    // halo solaire : pulsation douce + taille angulaire minimale gardée à toute distance
+    // (le voile reste rond et visible de très loin au lieu de devenir un bloom carré).
+    if (this.sunGlow && camera) {
+      const d = Math.max(camera.position.length(), SUN.radius);   // Soleil à l'origine
+      const pulse = 0.97 + Math.sin(this._t * 1.5) * 0.03;
+      this.sunGlow.core.scale.setScalar(Math.max(SUN.radius * 3.2, d * 0.05) * pulse);
+      this.sunGlow.halo.scale.setScalar(Math.max(SUN.radius * 9.0, d * 0.13) * pulse);
+    }
 
     // Soleil à l'origine -> direction de lumière pour les shaders custom
     for (const m of this._earthMats) m.uniforms.sunPos.value.set(0, 0, 0);
