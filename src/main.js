@@ -197,6 +197,7 @@ window.__game = {
   THREE,
   get state() { return state; }, get ship() { return ship; },
   get missions() { return missions; }, get system() { return system; }, get input() { return input; },
+  get camera() { return camera; },
 };
 
 requestAnimationFrame(frame);

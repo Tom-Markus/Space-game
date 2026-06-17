@@ -34,7 +34,8 @@ export const PLANETS = [
   {
     key: "venus", name: "Vénus", map: NEW + "tom_venus_atmosphere.jpg",
     radius: r(6052), distance: d(108200000), orbSpeed: 0.0088, rotSpeed: -0.0012, tilt: 177.4, color: 0xd8b87a,
-    atmosphere: { color: 0xf6d99a, power: 5.5, size: 1.013 },
+    // Vénus : atmosphère très épaisse et dorée -> halo large, dense, brume marquée
+    atmosphere: { color: 0xf6d99a, size: 1.10, falloff: 3.0, intensity: 1.55, haze: 0.75 },
     fact: "Rotation rétrograde, 465 °C sous des nuages d'acide sulfurique.",
     mission: { type: "scan", verb: "probe", hold: 3.5, reward: 240,
       title: "Sonde atmosphérique", desc: "Larguez une sonde dans l'épaisse atmosphère de Vénus." },
@@ -44,7 +45,8 @@ export const PLANETS = [
     night: NEW + "tom_earth_nightmap.jpg", clouds: NEW + "tom_earth_clouds.jpg",
     normal: NEW + "tom_earth_normal_map.jpg", spec: NEW + "tom_earth_specular_map.jpg",
     radius: r(6371), distance: d(149600000), orbSpeed: 0.0075, rotSpeed: 0.03, tilt: 23.44, color: 0x2a6fb0,
-    atmosphere: { color: 0x69a6ff, power: 6.0, size: 1.011 },
+    // Terre : fin liseré bleu lumineux au limbe, brume bleutée sur le disque jour
+    atmosphere: { color: 0x6aa6ff, size: 1.11, falloff: 4.5, intensity: 1.3, haze: 0.38 },
     fact: "Notre berceau : 71 % de la surface couverte d'océans.",
     moon: { name: "Lune", map: NEW + "tom_moon.jpg", radius: r(1737), distance: d(384400), orbSpeed: 0.02, rotSpeed: 0.01 },
     mission: { type: "scan", verb: "scan", hold: 2.5, reward: 150,
@@ -60,7 +62,8 @@ export const PLANETS = [
   {
     key: "mars", name: "Mars", map: NEW + "tom_mars.jpg",
     radius: r(3390), distance: d(227900000), orbSpeed: 0.0061, rotSpeed: 0.029, tilt: 25.19, color: 0xc1502e,
-    atmosphere: { color: 0xf0a884, power: 5.5, size: 1.012 },
+    // Mars : atmosphère ténue -> halo fin et discret, légèrement rosé
+    atmosphere: { color: 0xf0a884, size: 1.05, falloff: 5.5, intensity: 0.7, haze: 0.3 },
     fact: "La planète rouge : Olympus Mons culmine à 22 km.",
     mission: { type: "scan", verb: "sample", hold: 4.0, reward: 300,
       title: "Recherche de glace", desc: "Prélevez des échantillons à la surface martienne." },
@@ -68,6 +71,8 @@ export const PLANETS = [
   {
     key: "jupiter", name: "Jupiter", map: NEW + "tom_jupiter.jpg",
     radius: r(69911), distance: d(778500000), orbSpeed: 0.0033, rotSpeed: 0.06, tilt: 3.13, color: 0xd2a679,
+    // Géante gazeuse : voile chaud crème/ambre épousant les bandes nuageuses
+    atmosphere: { color: 0xe8c9a0, size: 1.05, falloff: 5.0, intensity: 0.85, haze: 0.35 },
     fact: "Géante gazeuse : la Grande Tache Rouge est plus large que la Terre.",
     mission: { type: "scan", verb: "scan", hold: 4.5, reward: 380,
       title: "La Grande Tache Rouge", desc: "Étudiez la tempête géante de Jupiter." },
@@ -75,6 +80,8 @@ export const PLANETS = [
   {
     key: "saturn", name: "Saturne", map: NEW + "tom_saturn.jpg",
     radius: r(58232), distance: d(1434000000), orbSpeed: 0.0024, rotSpeed: 0.055, tilt: 26.73, color: 0xe3c98f,
+    // Voile doré pâle, discret pour ne pas écraser les anneaux
+    atmosphere: { color: 0xf0dcae, size: 1.045, falloff: 5.5, intensity: 0.7, haze: 0.3 },
     ring: { map: TEX + "saturn_ring.jpg", alpha: NEW + "tom_saturn_ring_alpha.png", inner: r(74500), outer: r(140180) },
     fact: "Ses anneaux de glace s'étendent sur 280 000 km.",
     mission: { type: "flythrough", verb: "flythrough", reward: 420,
@@ -83,6 +90,8 @@ export const PLANETS = [
   {
     key: "uranus", name: "Uranus", map: NEW + "tom_uranus.jpg",
     radius: r(25362), distance: d(2871000000), orbSpeed: 0.0017, rotSpeed: -0.037, tilt: 97.77, color: 0x9fe0e6,
+    // Géante de glaces : halo cyan glacé, méthane diffusant le bleu-vert
+    atmosphere: { color: 0xb4ecf0, size: 1.07, falloff: 4.0, intensity: 1.0, haze: 0.45 },
     ring: { map: TEX + "uranus_ring.jpg", inner: r(38000), outer: r(51000), faint: true, vertical: true },
     fact: "Géante de glaces inclinée à 98° : elle « roule » sur son orbite.",
     mission: { type: "scan", verb: "probe", hold: 4.0, reward: 360,
@@ -91,7 +100,8 @@ export const PLANETS = [
   {
     key: "neptune", name: "Neptune", map: NEW + "tom_neptune.jpg",
     radius: r(24622), distance: d(4495000000), orbSpeed: 0.0013, rotSpeed: 0.038, tilt: 28.32, color: 0x3a66d6,
-    atmosphere: { color: 0x5a8cff, power: 5.5, size: 1.014 },
+    // Neptune : épaisse atmosphère bleu profond -> halo large et soutenu
+    atmosphere: { color: 0x5a8cff, size: 1.09, falloff: 3.8, intensity: 1.05, haze: 0.4 },
     fact: "Vents les plus violents du Système Solaire : 2 100 km/h.",
     mission: { type: "scan", verb: "scan", hold: 4.5, reward: 400,
       title: "Tempêtes de Neptune", desc: "Analysez les vents supersoniques de la dernière géante." },

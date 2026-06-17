@@ -44,35 +44,53 @@ void main(){
 }`;
 
 const ATMO_VERT = EARTH_VERT;
-// Atmosphère vue depuis l'espace : liseré FIN qui suit le limbe côté éclairé,
-// qui se fond dans la nuit et s'efface vers l'intérieur du disque.
+// Atmosphère vue depuis l'espace : un VRAI halo de diffusion (pas une coquille).
+// Principe : pour chaque rayon de vue on calcule son « paramètre d'impact » b —
+// la distance à laquelle il frôle le centre de la planète (0 = plein disque,
+// 1 = limbe de la sphère d'atmosphère). Le glow NAÎT au limbe de la planète et
+// se FOND dans le vide vers l'extérieur (décroissance gaussienne), avec une brume
+// douce sur le disque côté jour. Il s'éteint côté nuit -> croissant net.
 const ATMO_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform vec3 glowColor; uniform float power; uniform vec3 sunPos;
+uniform vec3 glowColor; uniform vec3 sunPos;
+uniform float kRatio;    // rayon planète / rayon atmosphère = limbe de la planète
+uniform float falloff;   // raideur du fondu vers le vide (grand = halo serré)
+uniform float intensity; // luminosité globale du halo
+uniform float haze;      // force de la brume sur le disque éclairé
 varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
 void main(){
   #include <logdepthbuf_fragment>
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(sunPos - vWorldPos);
-  // épaisseur optique : très concentrée au bord (Fresnel élevé) pour rester
-  // un fin liseré collé au limbe, comme sur les photos satellites.
-  float fres = 1.0 - max(dot(N, V), 0.0);
-  float rim = pow(fres, power);
-  // éclairage : doit s'éteindre proprement côté nuit
+
+  // paramètre d'impact normalisé du rayon de vue (0 au centre, 1 au limbe atmo)
+  float cosA = max(dot(N, V), 0.0);
+  float b = sqrt(max(0.0, 1.0 - cosA * cosA));
+
+  // halo externe : il commence au limbe de la planète (b = kRatio) et décroît
+  // en gaussienne vers l'extérieur -> fondu doux dans l'espace, pas de bord dur.
+  float t = clamp((b - kRatio) / max(1.0 - kRatio, 1e-3), 0.0, 1.0);
+  float glow = (b >= kRatio) ? exp(-t * t * falloff) : 0.0;
+
+  // brume sur le disque : monte progressivement vers le limbe (b < kRatio)
+  float disk = (b < kRatio) ? smoothstep(kRatio * 0.45, kRatio, b) : 0.0;
+
+  // éclairage : le halo ne vit que côté éclairé -> croissant net au terminateur
   float ndl = dot(N, L);
-  float day = smoothstep(-0.08, 0.30, ndl);
-  // diffusion vers l'avant : limbe orange/rose côté Soleil, blanc froid ailleurs
-  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 4.0);
-  // teinte « coucher de soleil » au terminateur seulement
-  float dusk = smoothstep(0.25, 0.65, 1.0 - abs(ndl)) * day;
-  vec3 base = glowColor;
-  vec3 col = base;
-  col = mix(col, base * vec3(1.4, 0.8, 0.55) + vec3(0.08, 0.02, 0.0), dusk * 0.6);
-  col += base * forward * day * 0.35;
-  float a = rim * day * (0.55 + 0.6 * forward);
-  gl_FragColor = vec4(col, clamp(a, 0.0, 0.95));
+  float day = smoothstep(-0.18, 0.28, ndl);
+  // diffusion vers l'avant : limbe face au Soleil nettement plus lumineux
+  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+  // teinte « coucher de soleil » au terminateur uniquement
+  float dusk = smoothstep(0.2, 0.75, 1.0 - abs(ndl)) * day;
+
+  vec3 col = glowColor;
+  col = mix(col, glowColor * vec3(1.5, 0.85, 0.55) + vec3(0.06, 0.015, 0.0), dusk * 0.65);
+  col += glowColor * forward * day * 0.4;
+
+  float a = day * (glow * (0.55 + 0.7 * forward) + disk * haze) * intensity;
+  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
 const RING_FRAG = `
@@ -261,15 +279,27 @@ export class SolarSystem {
       const drift = (def.rotSpeed || 0) + 0.018;
       this._clouds.push({ mesh: clouds, speed: drift });
     }
-    // atmosphère
+    // atmosphère : halo de diffusion soudé au limbe, fondu dans le vide
+    // (une seule sphère FrontSide, plus grande -> jamais une coquille opaque).
     if (def.atmosphere) {
+      const a = def.atmosphere;
+      const size = a.size || 1.1;
       const amat = new THREE.ShaderMaterial({
-        uniforms: { glowColor: { value: new THREE.Color(def.atmosphere.color) }, power: { value: def.atmosphere.power }, sunPos: { value: new THREE.Vector3() } },
+        uniforms: {
+          glowColor: { value: new THREE.Color(a.color) },
+          sunPos: { value: new THREE.Vector3() },
+          kRatio: { value: 1 / size },
+          falloff: { value: a.falloff != null ? a.falloff : 4.0 },
+          intensity: { value: a.intensity != null ? a.intensity : 1.2 },
+          haze: { value: a.haze != null ? a.haze : 0.5 },
+        },
         vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
-        transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
+        transparent: true, blending: THREE.AdditiveBlending, side: THREE.FrontSide, depthWrite: false,
       });
       this._atmoMats.push(amat);
-      tilt.add(new THREE.Mesh(new THREE.SphereGeometry(def.radius * def.atmosphere.size, 48, 32), amat));
+      const atmo = new THREE.Mesh(new THREE.SphereGeometry(def.radius * size, 64, 48), amat);
+      atmo.renderOrder = 2;                  // dessiné après la surface et les nuages
+      tilt.add(atmo);
     }
     // anneaux
     if (def.ring) this._buildRing(def, tilt);
