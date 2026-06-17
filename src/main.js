@@ -30,6 +30,7 @@ hud.buildHelp(document.getElementById("help"), T("controls"));
 
 // ---- chargement ----
 system = new SolarSystem(scene);
+system.maxAniso = stage.renderer.capabilities.getMaxAnisotropy();
 system.load((p) => {
   const pct = Math.round(p * 100);
   document.getElementById("loadbar").style.width = pct + "%";

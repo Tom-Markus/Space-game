@@ -91,6 +91,7 @@ export class SolarSystem {
     this._clouds = [];
     this._tmp = new THREE.Vector3();
     this._t = 0;
+    this.maxAniso = 8;                       // filtrage anisotrope (netteté aux angles rasants)
   }
 
   load(onProgress) {
@@ -111,7 +112,7 @@ export class SolarSystem {
     });
   }
 
-  _color(u, srgb = true) { const t = this.tex[u]; if (t) t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return t; }
+  _color(u, srgb = true) { const t = this.tex[u]; if (t) { t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.anisotropy = this.maxAniso; } return t; }
 
   _build() {
     const scene = this.scene;
