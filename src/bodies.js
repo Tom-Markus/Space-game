@@ -43,53 +43,89 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-const ATMO_VERT = EARTH_VERT;
-// Atmosphère vue depuis l'espace : un VRAI halo de diffusion (pas une coquille).
-// Principe : pour chaque rayon de vue on calcule son « paramètre d'impact » b —
-// la distance à laquelle il frôle le centre de la planète (0 = plein disque,
-// 1 = limbe de la sphère d'atmosphère). Le glow NAÎT au limbe de la planète et
-// se FOND dans le vide vers l'extérieur (décroissance gaussienne), avec une brume
-// douce sur le disque côté jour. Il s'éteint côté nuit -> croissant net.
+// Atmosphère ANALYTIQUE (intersection rayon/sphère) plutôt qu'un fondu basé sur
+// la normale (qui bandait sur le maillage et disparaissait de près). Pour chaque
+// pixel on reconstruit le vrai rayon de vue et on mesure la longueur de la corde
+// traversée DANS la couche d'atmosphère, bornée par la surface de la planète.
+// -> halo parfaitement lisse, qui épouse le limbe, se fond dans le vide, et qui
+//    reste visible (et éclaircit le ciel) quand on entre dans l'atmosphère.
+const ATMO_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec4 vClip;
+void main(){
+  vClip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_Position = vClip;
+  #include <logdepthbuf_vertex>
+}`;
+// Tout est calculé dans le repère CENTRÉ sur la planète : camRel (= position
+// caméra - centre planète) et sunDir sont pré-soustraits côté CPU en double
+// précision. Indispensable à l'échelle réelle (centres à ~1e9 u) : sinon la
+// soustraction en float32 dans le shader détruit la normale (jour/nuit faux).
 const ATMO_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform vec3 glowColor; uniform vec3 sunPos;
-uniform float kRatio;    // rayon planète / rayon atmosphère = limbe de la planète
-uniform float falloff;   // raideur du fondu vers le vide (grand = halo serré)
-uniform float intensity; // luminosité globale du halo
-uniform float haze;      // force de la brume sur le disque éclairé
-varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
+uniform vec3 glowColor; uniform vec3 camRel; uniform vec3 sunDir;
+uniform float planetR; uniform float atmoR; uniform float intensity; uniform float edge;
+uniform mat4 projInv; uniform mat4 viewInv;
+varying vec4 vClip;
+// intersections rayon/sphère centrée à l'origine : (tNear, tFar) ; x>y si raté
+vec2 raySphere(vec3 ro, vec3 rd, float R){
+  float b = dot(ro, rd);
+  float c = dot(ro, ro) - R * R;
+  float disc = b * b - c;
+  if (disc < 0.0) return vec2(1.0, -1.0);
+  float s = sqrt(disc);
+  return vec2(-b - s, -b + s);
+}
 void main(){
   #include <logdepthbuf_fragment>
-  vec3 N = normalize(vWorldNormal);
-  vec3 V = normalize(cameraPosition - vWorldPos);
-  vec3 L = normalize(sunPos - vWorldPos);
+  // rayon de vue EXACT reconstruit depuis la caméra (indépendant du maillage)
+  // -> aucune facette/bande, même de très près ou depuis l'intérieur.
+  // NB : on reconstruit sur le plan PROCHE (ndc.z = -1). Au plan lointain (z=+1)
+  // le w de l'inverse vaut ~0 à cette échelle (far = 1e12) -> Inf/NaN en float32.
+  vec2 ndc = vClip.xy / vClip.w;
+  vec4 vp = projInv * vec4(ndc, -1.0, 1.0);
+  vec3 viewDir = normalize(vp.xyz / vp.w);
+  vec3 rd = normalize((viewInv * vec4(viewDir, 0.0)).xyz);
+  vec3 ro = camRel;                       // origine = centre de la planète
 
-  // paramètre d'impact normalisé du rayon de vue (0 au centre, 1 au limbe atmo)
-  float cosA = max(dot(N, V), 0.0);
-  float b = sqrt(max(0.0, 1.0 - cosA * cosA));
+  vec2 ta = raySphere(ro, rd, atmoR);
+  if (ta.x > ta.y) discard;
+  float near = max(ta.x, 0.0);            // si on est DANS l'atmosphère, on part de la caméra
+  float far = ta.y;
+  // la planète opaque arrête le rayon : on ne compte pas l'atmosphère derrière elle
+  vec2 tp = raySphere(ro, rd, planetR);
+  if (tp.x <= tp.y && tp.x > 0.0) far = min(far, tp.x);
+  float path = max(0.0, far - near);
 
-  // halo externe : il commence au limbe de la planète (b = kRatio) et décroît
-  // en gaussienne vers l'extérieur -> fondu doux dans l'espace, pas de bord dur.
-  float t = clamp((b - kRatio) / max(1.0 - kRatio, 1e-3), 0.0, 1.0);
-  float glow = (b >= kRatio) ? exp(-t * t * falloff) : 0.0;
+  // corde maximale (rayon rasant le sol) -> densité normalisée 0..1
+  float maxChord = sqrt(max(atmoR * atmoR - planetR * planetR, 1e-3));
+  float depth = clamp(path / (2.0 * maxChord), 0.0, 1.0);
+  float glow = pow(depth, edge);
 
-  // brume sur le disque : monte progressivement vers le limbe (b < kRatio)
-  float disk = (b < kRatio) ? smoothstep(kRatio * 0.45, kRatio, b) : 0.0;
-
-  // éclairage : le halo ne vit que côté éclairé -> croissant net au terminateur
-  float ndl = dot(N, L);
-  float day = smoothstep(-0.18, 0.28, ndl);
-  // diffusion vers l'avant : limbe face au Soleil nettement plus lumineux
-  float forward = pow(clamp(dot(V, -L) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+  // éclairage : normale au point du rayon le plus proche du centre -> croissant net
+  float tPeri = clamp(-dot(ro, rd), near, far);
+  vec3 Nl = normalize(ro + rd * tPeri);
+  float ndl = dot(Nl, sunDir);
+  float day = smoothstep(-0.20, 0.30, ndl);
+  // diffusion vers l'avant : limbe face au Soleil plus lumineux
+  float forward = pow(clamp(dot(rd, sunDir) * 0.5 + 0.5, 0.0, 1.0), 3.0);
   // teinte « coucher de soleil » au terminateur uniquement
-  float dusk = smoothstep(0.2, 0.75, 1.0 - abs(ndl)) * day;
+  float dusk = smoothstep(0.2, 0.8, 1.0 - abs(ndl)) * day;
 
   vec3 col = glowColor;
-  col = mix(col, glowColor * vec3(1.5, 0.85, 0.55) + vec3(0.06, 0.015, 0.0), dusk * 0.65);
+  col = mix(col, glowColor * vec3(1.5, 0.85, 0.55) + vec3(0.06, 0.015, 0.0), dusk * 0.6);
   col += glowColor * forward * day * 0.4;
 
-  float a = day * (glow * (0.55 + 0.7 * forward) + disk * haze) * intensity;
+  // immersion : si la caméra est DANS l'atmosphère, le ciel visible s'éclaircit
+  // (d'autant plus qu'on est bas) -> on sent qu'on est entré dedans, ciel bleu
+  // au-dessus de soi. La planète opaque masque ce voile quand on regarde le sol.
+  float camDist = length(ro);
+  float inside = 1.0 - smoothstep(planetR, atmoR, camDist);
+  float skyFill = inside * inside;
+
+  float a = day * (glow * (0.6 + 0.6 * forward) + skyFill * 0.7) * intensity;
   gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
@@ -279,26 +315,29 @@ export class SolarSystem {
       const drift = (def.rotSpeed || 0) + 0.018;
       this._clouds.push({ mesh: clouds, speed: drift });
     }
-    // atmosphère : halo de diffusion soudé au limbe, fondu dans le vide
-    // (une seule sphère FrontSide, plus grande -> jamais une coquille opaque).
+    // atmosphère : halo analytique soudé au limbe, visible aussi de l'intérieur.
+    // BackSide -> la coque reste rendue quand la caméra entre dans la sphère.
     if (def.atmosphere) {
       const a = def.atmosphere;
       const size = a.size || 1.1;
       const amat = new THREE.ShaderMaterial({
         uniforms: {
           glowColor: { value: new THREE.Color(a.color) },
-          sunPos: { value: new THREE.Vector3() },
-          kRatio: { value: 1 / size },
-          falloff: { value: a.falloff != null ? a.falloff : 4.0 },
-          intensity: { value: a.intensity != null ? a.intensity : 1.2 },
-          haze: { value: a.haze != null ? a.haze : 0.5 },
+          camRel: { value: new THREE.Vector3() },
+          sunDir: { value: new THREE.Vector3() },
+          planetR: { value: def.radius },
+          atmoR: { value: def.radius * size },
+          intensity: { value: a.intensity != null ? a.intensity : 1.0 },
+          edge: { value: a.edge != null ? a.edge : 1.0 },
+          projInv: { value: new THREE.Matrix4() },
+          viewInv: { value: new THREE.Matrix4() },
         },
         vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
-        transparent: true, blending: THREE.AdditiveBlending, side: THREE.FrontSide, depthWrite: false,
+        transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
       });
-      this._atmoMats.push(amat);
+      this._atmoMats.push({ mat: amat, key: def.key });
       const atmo = new THREE.Mesh(new THREE.SphereGeometry(def.radius * size, 64, 48), amat);
-      atmo.renderOrder = 2;                  // dessiné après la surface et les nuages
+      atmo.renderOrder = 3;                  // dessiné après la surface et les nuages
       tilt.add(atmo);
     }
     // anneaux
@@ -415,7 +454,25 @@ export class SolarSystem {
 
     // Soleil à l'origine -> direction de lumière pour les shaders custom
     for (const m of this._earthMats) m.uniforms.sunPos.value.set(0, 0, 0);
-    for (const m of this._atmoMats) m.uniforms.sunPos.value.set(0, 0, 0);
+  }
+
+  // Uniformes des atmosphères, calculés en double précision côté CPU et juste
+  // AVANT le rendu (caméra à jour, pas de retard d'une frame) :
+  //  - matrices caméra -> rayon de vue exact (anti-banding)
+  //  - camRel/sunDir dans le repère centré sur la planète -> jour/nuit précis.
+  syncAtmosphere(camera) {
+    if (!this._atmoMats.length) return;
+    camera.updateMatrixWorld();
+    for (const { mat, key } of this._atmoMats) {
+      const b = this.bodies.get(key);
+      if (!b) continue;
+      b.getWorldPosition(this._tmp);                       // centre planète (monde)
+      const u = mat.uniforms;
+      u.projInv.value.copy(camera.projectionMatrixInverse);
+      u.viewInv.value.copy(camera.matrixWorld);
+      u.camRel.value.subVectors(camera.position, this._tmp);   // caméra relative au centre
+      u.sunDir.value.copy(this._tmp).multiplyScalar(-1).normalize();  // vers le Soleil (origine)
+    }
   }
 
   // distance à la surface du corps le plus proche (pilote la distorsion + le HUD)

@@ -190,6 +190,7 @@ function frame(now) {
   }
 
   if (system && system.sky) system.sky.position.copy(camera.position);   // fond stellaire à l'infini
+  if (system) system.syncAtmosphere(camera);                             // rayon de vue exact des atmosphères
   stage.render();
 }
 
