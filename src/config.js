@@ -34,8 +34,8 @@ export const PLANETS = [
   {
     key: "venus", name: "Vénus", map: NEW + "tom_venus_atmosphere.jpg",
     radius: r(6052), distance: d(108200000), orbSpeed: 0.0088, rotSpeed: -0.0012, tilt: 177.4, color: 0xd8b87a,
-    // Vénus : haut de l'atmosphère ~191 km (12·H, H=15.9 km) -> size = 1 + 191/6052
-    atmosphere: { color: 0xf6d99a, size: 1.0315, intensity: 1.05, edge: 1.5 },
+    // Vénus : atmosphère épaisse et opaque. H=15.9 km, densité élevée -> fondu jusqu'à ~191 km
+    atmosphere: { color: 0xf6d99a, H: 15.9, density: 7.0 },
     fact: "Rotation rétrograde, 465 °C sous des nuages d'acide sulfurique.",
     mission: { type: "scan", verb: "probe", hold: 3.5, reward: 240,
       title: "Sonde atmosphérique", desc: "Larguez une sonde dans l'épaisse atmosphère de Vénus." },
@@ -45,8 +45,8 @@ export const PLANETS = [
     night: NEW + "tom_earth_nightmap.jpg", clouds: NEW + "tom_earth_clouds.jpg",
     normal: NEW + "tom_earth_normal_map.jpg", spec: NEW + "tom_earth_specular_map.jpg",
     radius: r(6371), distance: d(149600000), orbSpeed: 0.0075, rotSpeed: 0.03, tilt: 23.44, color: 0x2a6fb0,
-    // Terre : haut de l'atmosphère ~102 km (~ ligne de Kármán 100 km) -> size = 1 + 102/6371
-    atmosphere: { color: 0x6aa6ff, size: 1.016, intensity: 0.8, edge: 1.5 },
+    // Terre : H=8.5 km. Densité décroît jusqu'à ~0 vers 12·H ≈ 102 km (ligne de Kármán)
+    atmosphere: { color: 0x6aa6ff, H: 8.5, density: 2.6 },
     fact: "Notre berceau : 71 % de la surface couverte d'océans.",
     moon: { name: "Lune", map: NEW + "tom_moon.jpg", radius: r(1737), distance: d(384400), orbSpeed: 0.02, rotSpeed: 0.01 },
     mission: { type: "scan", verb: "scan", hold: 2.5, reward: 150,
@@ -62,8 +62,8 @@ export const PLANETS = [
   {
     key: "mars", name: "Mars", map: NEW + "tom_mars.jpg",
     radius: r(3390), distance: d(227900000), orbSpeed: 0.0061, rotSpeed: 0.029, tilt: 25.19, color: 0xc1502e,
-    // Mars : ténue mais haute (faible gravité) ~133 km (12·H, H=11.1 km) -> size = 1 + 133/3390
-    atmosphere: { color: 0xf0a884, size: 1.0393, intensity: 0.55, edge: 1.9 },
+    // Mars : ténue mais haute (faible gravité). H=11.1 km, densité faible
+    atmosphere: { color: 0xf0a884, H: 11.1, density: 0.9 },
     fact: "La planète rouge : Olympus Mons culmine à 22 km.",
     mission: { type: "scan", verb: "sample", hold: 4.0, reward: 300,
       title: "Recherche de glace", desc: "Prélevez des échantillons à la surface martienne." },
@@ -71,9 +71,8 @@ export const PLANETS = [
   {
     key: "jupiter", name: "Jupiter", map: NEW + "tom_jupiter.jpg",
     radius: r(69911), distance: d(778500000), orbSpeed: 0.0033, rotSpeed: 0.06, tilt: 3.13, color: 0xd2a679,
-    // Jupiter : haute atmosphère ~324 km au-dessus du niveau 1 bar (12·H, H=27 km) -> size = 1 + 324/69911
-    // (très fin à l'échelle réelle -> luminosité relevée pour rester visible)
-    atmosphere: { color: 0xe8c9a0, size: 1.0046, intensity: 1.2, edge: 1.1 },
+    // Jupiter : H=27 km au-dessus du niveau 1 bar. Voile chaud crème/ambre
+    atmosphere: { color: 0xe8c9a0, H: 27, density: 5.0 },
     fact: "Géante gazeuse : la Grande Tache Rouge est plus large que la Terre.",
     mission: { type: "scan", verb: "scan", hold: 4.5, reward: 380,
       title: "La Grande Tache Rouge", desc: "Étudiez la tempête géante de Jupiter." },
@@ -81,8 +80,8 @@ export const PLANETS = [
   {
     key: "saturn", name: "Saturne", map: NEW + "tom_saturn.jpg",
     radius: r(58232), distance: d(1434000000), orbSpeed: 0.0024, rotSpeed: 0.055, tilt: 26.73, color: 0xe3c98f,
-    // Saturne : grande hauteur d'échelle ~714 km (12·H, H=59.5 km) -> size = 1 + 714/58232
-    atmosphere: { color: 0xf0dcae, size: 1.0123, intensity: 0.95, edge: 1.2 },
+    // Saturne : grande hauteur d'échelle H=59.5 km -> voile doré pâle plus étendu
+    atmosphere: { color: 0xf0dcae, H: 59.5, density: 4.0 },
     ring: { map: TEX + "saturn_ring.jpg", alpha: NEW + "tom_saturn_ring_alpha.png", inner: r(74500), outer: r(140180) },
     fact: "Ses anneaux de glace s'étendent sur 280 000 km.",
     mission: { type: "flythrough", verb: "flythrough", reward: 420,
@@ -91,8 +90,8 @@ export const PLANETS = [
   {
     key: "uranus", name: "Uranus", map: NEW + "tom_uranus.jpg",
     radius: r(25362), distance: d(2871000000), orbSpeed: 0.0017, rotSpeed: -0.037, tilt: 97.77, color: 0x9fe0e6,
-    // Uranus : haute atmosphère ~332 km (12·H, H=27.7 km) -> size = 1 + 332/25362
-    atmosphere: { color: 0xb4ecf0, size: 1.0131, intensity: 1.0, edge: 1.1 },
+    // Uranus : H=27.7 km. Halo cyan glacé (méthane)
+    atmosphere: { color: 0xb4ecf0, H: 27.7, density: 4.0 },
     ring: { map: TEX + "uranus_ring.jpg", inner: r(38000), outer: r(51000), faint: true, vertical: true },
     fact: "Géante de glaces inclinée à 98° : elle « roule » sur son orbite.",
     mission: { type: "scan", verb: "probe", hold: 4.0, reward: 360,
@@ -101,8 +100,8 @@ export const PLANETS = [
   {
     key: "neptune", name: "Neptune", map: NEW + "tom_neptune.jpg",
     radius: r(24622), distance: d(4495000000), orbSpeed: 0.0013, rotSpeed: 0.038, tilt: 28.32, color: 0x3a66d6,
-    // Neptune : haute atmosphère ~229 km (12·H, H=19.1 km) -> size = 1 + 229/24622
-    atmosphere: { color: 0x5a8cff, size: 1.0093, intensity: 1.0, edge: 1.0 },
+    // Neptune : H=19.1 km. Bleu profond
+    atmosphere: { color: 0x5a8cff, H: 19.1, density: 4.0 },
     fact: "Vents les plus violents du Système Solaire : 2 100 km/h.",
     mission: { type: "scan", verb: "scan", hold: 4.5, reward: 400,
       title: "Tempêtes de Neptune", desc: "Analysez les vents supersoniques de la dernière géante." },

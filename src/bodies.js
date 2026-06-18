@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SUN, PLANETS, SKYBOX } from "./config.js";
+import { SUN, PLANETS, SKYBOX, S } from "./config.js";
 
 // ---------- petits shaders réutilisés ----------
 const SRGB2LIN = `vec3 toLin(vec3 c){ return pow(c, vec3(2.2)); }`;
@@ -66,7 +66,7 @@ const ATMO_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
 uniform vec3 glowColor; uniform vec3 camRel; uniform vec3 sunDir;
-uniform float planetR; uniform float atmoR; uniform float intensity; uniform float edge;
+uniform float planetR; uniform float atmoR; uniform float scaleH; uniform float density;
 uniform mat4 projInv; uniform mat4 viewInv;
 varying vec4 vClip;
 // intersections rayon/sphère centrée à l'origine : (tNear, tFar) ; x>y si raté
@@ -97,35 +97,34 @@ void main(){
   // la planète opaque arrête le rayon : on ne compte pas l'atmosphère derrière elle
   vec2 tp = raySphere(ro, rd, planetR);
   if (tp.x <= tp.y && tp.x > 0.0) far = min(far, tp.x);
-  float path = max(0.0, far - near);
+  if (far <= near) discard;
 
-  // corde maximale (rayon rasant le sol) -> densité normalisée 0..1
-  float maxChord = sqrt(max(atmoR * atmoR - planetR * planetR, 1e-3));
-  float depth = clamp(path / (2.0 * maxChord), 0.0, 1.0);
-  float glow = pow(depth, edge);
+  // DENSITÉ EXPONENTIELLE : rho ~ exp(-altitude/H). On évalue au point le plus bas
+  // du rayon (le périapse), borné au segment visible. Comme exp() tend vers 0 en
+  // douceur, l'atmosphère se FOND progressivement dans l'espace (pas de bord net) ;
+  // à ~12·H (≈ ligne de Kármán pour la Terre) la densité est déjà ~0.
+  float tP = clamp(-dot(ro, rd), near, far);
+  vec3 pP = ro + rd * tP;
+  float hP = max(length(pP) - planetR, 0.0);          // altitude minimale du rayon
+  // colonne traversée façon Chapman : largeur gaussienne sqrt(2π·r·H) au limbe,
+  // tronquée à la portion réellement parcourue dans l'atmosphère (segment visible).
+  float gw = sqrt(6.2832 * (planetR + hP) * scaleH);
+  float pathFrac = 1.0 - exp(-(far - near) / gw);     // 0..1 (fraction de colonne)
+  float colDens = exp(-hP / scaleH) * pathFrac;        // ~1 au ras du sol, ->0 en altitude
+  float glow = 1.0 - exp(-density * colDens);           // opacité (Beer-Lambert), fondu doux
 
-  // éclairage : normale au point du rayon le plus proche du centre -> croissant net
-  float tPeri = clamp(-dot(ro, rd), near, far);
-  vec3 Nl = normalize(ro + rd * tPeri);
+  // éclairage jour/nuit au périapse + diffusion vers l'avant + teinte au terminateur
+  vec3 Nl = normalize(pP);
   float ndl = dot(Nl, sunDir);
-  float day = smoothstep(-0.20, 0.30, ndl);
-  // diffusion vers l'avant : limbe face au Soleil plus lumineux
+  float day = smoothstep(-0.25, 0.25, ndl);
   float forward = pow(clamp(dot(rd, sunDir) * 0.5 + 0.5, 0.0, 1.0), 3.0);
-  // teinte « coucher de soleil » au terminateur uniquement
-  float dusk = smoothstep(0.2, 0.8, 1.0 - abs(ndl)) * day;
+  float dusk = smoothstep(0.15, 0.8, 1.0 - abs(ndl)) * day;
 
   vec3 col = glowColor;
   col = mix(col, glowColor * vec3(1.5, 0.85, 0.55) + vec3(0.06, 0.015, 0.0), dusk * 0.6);
   col += glowColor * forward * day * 0.4;
 
-  // immersion : si la caméra est DANS l'atmosphère, le ciel visible s'éclaircit
-  // (d'autant plus qu'on est bas) -> on sent qu'on est entré dedans, ciel bleu
-  // au-dessus de soi. La planète opaque masque ce voile quand on regarde le sol.
-  float camDist = length(ro);
-  float inside = 1.0 - smoothstep(planetR, atmoR, camDist);
-  float skyFill = inside * inside;
-
-  float a = day * (glow * (0.6 + 0.6 * forward) + skyFill * 0.7) * intensity;
+  float a = day * glow * (0.8 + 0.4 * forward);
   gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
@@ -316,20 +315,22 @@ export class SolarSystem {
       const drift = (def.rotSpeed || 0) + 0.018;
       this._clouds.push({ mesh: clouds, speed: drift });
     }
-    // atmosphère : halo analytique soudé au limbe, visible aussi de l'intérieur.
-    // BackSide -> la coque reste rendue quand la caméra entre dans la sphère.
+    // atmosphère : densité exponentielle (exp(-altitude/H)) -> fondu doux vers
+    // l'espace. La coque va jusqu'à ~12·H (≈ Kármán) où la densité est ~nulle.
+    // BackSide -> reste rendue (et éclaircit le ciel) quand la caméra entre dedans.
     if (def.atmosphere) {
       const a = def.atmosphere;
-      const size = a.size || 1.1;
+      const Hu = (a.H || 8.5) * S;            // hauteur d'échelle en unités scène
+      const atmoR = def.radius + 12 * Hu;     // sommet géométrique (~ligne de Kármán)
       const amat = new THREE.ShaderMaterial({
         uniforms: {
           glowColor: { value: new THREE.Color(a.color) },
           camRel: { value: new THREE.Vector3() },
           sunDir: { value: new THREE.Vector3() },
           planetR: { value: def.radius },
-          atmoR: { value: def.radius * size },
-          intensity: { value: a.intensity != null ? a.intensity : 1.0 },
-          edge: { value: a.edge != null ? a.edge : 1.0 },
+          atmoR: { value: atmoR },
+          scaleH: { value: Hu },
+          density: { value: a.density != null ? a.density : 2.0 },
           projInv: { value: new THREE.Matrix4() },
           viewInv: { value: new THREE.Matrix4() },
         },
@@ -337,7 +338,7 @@ export class SolarSystem {
         transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
       });
       this._atmoMats.push({ mat: amat, key: def.key });
-      const atmo = new THREE.Mesh(new THREE.SphereGeometry(def.radius * size, 64, 48), amat);
+      const atmo = new THREE.Mesh(new THREE.SphereGeometry(atmoR, 64, 48), amat);
       atmo.renderOrder = 3;                  // dessiné après la surface et les nuages
       tilt.add(atmo);
     }
