@@ -1,39 +1,48 @@
 import * as THREE from "three";
 import { SUN, PLANETS, SKYBOX, S } from "./config.js";
 
+// Vitesse de rotation propre des astres : la vraie échelle serait beaucoup trop
+// lente (Terre = 24 h). Facteur global de compromis « jeu » appliqué à toutes les
+// rotations (planètes, Lune, nuages, Soleil) -> calme mais bien vivant.
+const SPIN_SCALE = 0.3;
+
 // ---------- petits shaders réutilisés ----------
 const SRGB2LIN = `vec3 toLin(vec3 c){ return pow(c, vec3(2.2)); }`;
 
+// Éclairage de la Terre calculé dans le REPÈRE CAMÉRA (view space) : à l'échelle
+// réelle (~1e9 u), faire cameraPosition - vWorldPos en float32 détruit la direction
+// de vue -> reflet spéculaire facetté sur les océans. modelViewMatrix est précalculé
+// en double précision côté CPU, donc la position vue est précise et lisse.
 const EARTH_VERT = `
 #include <common>
 #include <logdepthbuf_pars_vertex>
-varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
+varying vec2 vUv; varying vec3 vViewPos; varying vec3 vViewNormal;
 void main(){
   vUv = uv;
-  vec4 wp = modelMatrix * vec4(position,1.0);
-  vWorldPos = wp.xyz;
-  vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  // gl_Position via modelViewMatrix (précalculé en double précision côté CPU) :
-  // évite le tremblement dû à la perte de précision float32 aux distances réelles.
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vViewPos = mv.xyz;                                 // position dans le repère caméra (précise)
+  vViewNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * mv;
   #include <logdepthbuf_vertex>
 }`;
 const EARTH_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform sampler2D dayMap; uniform sampler2D nightMap; uniform sampler2D specMap; uniform vec3 sunPos;
-varying vec2 vUv; varying vec3 vWorldPos; varying vec3 vWorldNormal;
+uniform sampler2D dayMap; uniform sampler2D nightMap; uniform sampler2D specMap;
+varying vec2 vUv; varying vec3 vViewPos; varying vec3 vViewNormal;
 ${SRGB2LIN}
 void main(){
   #include <logdepthbuf_fragment>
-  vec3 N = normalize(vWorldNormal);
-  vec3 L = normalize(sunPos - vWorldPos);
+  vec3 N = normalize(vViewNormal);
+  // Soleil à l'origine du monde -> sa position dans le repère caméra
+  vec3 sunView = (viewMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 L = normalize(sunView - vViewPos);
   float ndl = dot(N, L);
   float day = smoothstep(-0.08, 0.30, ndl);
   vec3 dayC = toLin(texture2D(dayMap, vUv).rgb);
   vec3 nightC = toLin(texture2D(nightMap, vUv).rgb);
   float ocean = texture2D(specMap, vUv).r;
-  vec3 V = normalize(cameraPosition - vWorldPos);
+  vec3 V = normalize(-vViewPos);                     // caméra à l'origine en repère vue (précis)
   vec3 H = normalize(L + V);
   // spéculaire océan : Blinn-Phong étroit, contribution modérée -> pas de « brûlure »
   float spec = pow(max(dot(N,H),0.0), 80.0) * ocean * clamp(ndl*3.0,0.0,1.0);
@@ -212,7 +221,6 @@ export class SolarSystem {
     this.scene = scene;
     this.bodies = new Map();     // key -> {def,holder,radius,getWorldPosition}
     this.tex = {};
-    this._earthMats = [];
     this._atmoMats = [];
     this._clouds = [];
     this._tmp = new THREE.Vector3();
@@ -286,11 +294,9 @@ export class SolarSystem {
           dayMap: { value: this._color(def.map, false) },
           nightMap: { value: this._color(def.night, false) },
           specMap: { value: this._color(def.spec, false) },
-          sunPos: { value: new THREE.Vector3(0, 0, 0) },
         },
         vertexShader: EARTH_VERT, fragmentShader: EARTH_FRAG,
       });
-      this._earthMats.push(mat);
       mesh = new THREE.Mesh(geo, mat);
     } else {
       const mat = new THREE.MeshStandardMaterial({
@@ -434,12 +440,12 @@ export class SolarSystem {
       if (!def || def.key === "sun" || def.key === "moon") continue;
       const pivot = b.holder.parent;
       const spin = pivot && pivot.userData ? pivot.userData.spin : null;
-      if (spin) spin.rotation.y += (def.rotSpeed || 0) * dt;
+      if (spin) spin.rotation.y += (def.rotSpeed || 0) * SPIN_SCALE * dt;
     }
-    for (const cl of this._clouds) cl.mesh.rotation.y += cl.speed * dt;
-    if (this._moon) this._moon.spin.rotation.y += this._moon.def.rotSpeed * dt;
+    for (const cl of this._clouds) cl.mesh.rotation.y += cl.speed * SPIN_SCALE * dt;
+    if (this._moon) this._moon.spin.rotation.y += this._moon.def.rotSpeed * SPIN_SCALE * dt;
     if (this.stars) this.stars.rotation.y += 1e-6 * dt;
-    if (this.sun) this.sun.rotation.y += 0.006 * dt;
+    if (this.sun) this.sun.rotation.y += 0.006 * SPIN_SCALE * dt;
     // halo solaire : pulsation douce + taille angulaire minimale gardée à toute distance
     // (le voile reste rond et visible de très loin au lieu de devenir un bloom carré).
     if (this.sunGlow && camera) {
@@ -453,9 +459,6 @@ export class SolarSystem {
       this.sunGlow.core.scale.setScalar(Math.max(coreMin, coreD) * pulse);
       this.sunGlow.halo.scale.setScalar(Math.max(haloMin, haloD) * pulse);
     }
-
-    // Soleil à l'origine -> direction de lumière pour les shaders custom
-    for (const m of this._earthMats) m.uniforms.sunPos.value.set(0, 0, 0);
   }
 
   // Uniformes des atmosphères, calculés en double précision côté CPU et juste
