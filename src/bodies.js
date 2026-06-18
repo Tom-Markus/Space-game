@@ -309,7 +309,8 @@ export class SolarSystem {
         alphaMap: this._color(def.clouds), color: 0xffffff, transparent: true,
         depthWrite: false, opacity: 0.92, roughness: 1, metalness: 0,
       });
-      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.005, 96, 64), cmat);
+      // sommet des nuages ~12 km (haut de la troposphère) : 1 + 12/6371 ≈ 1.0019
+      const clouds = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.0019, 96, 64), cmat);
       tilt.add(clouds);
       // décalage clair par rapport à la rotation propre de la planète -> dérive perceptible
       const drift = (def.rotSpeed || 0) + 0.018;
