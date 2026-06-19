@@ -1,7 +1,8 @@
 # Musiques de fond 🎵
 
 Déposez ici vos fichiers de musique. Ils seront joués automatiquement au lancement
-du jeu, **l'un après l'autre, en boucle infinie** (musique 1 → 2 → 3 → 1 → …).
+du jeu, **dans le désordre** (tirage aléatoire, jamais deux fois la même piste
+d'affilée), avec **5 secondes de silence** entre chaque piste, en boucle infinie.
 
 ## Nommage des fichiers
 
@@ -15,9 +16,10 @@ musique_4.mp3   ← (facultatif, etc.)
 ...
 ```
 
-- Le jeu cherche `musique_1.mp3`, `musique_2.mp3`, … jusqu'à `musique_16.mp3`.
-- Mettez-en **autant que vous voulez** (1, 3, 10…). Les numéros manquants sont
-  simplement ignorés ; l'ordre de lecture suit les numéros.
+- Le jeu cherche `musique_1.mp3`, `musique_2.mp3`, … jusqu'à `musique_16.mp3`,
+  et s'arrête au premier numéro manquant (numérotation continue requise).
+- Mettez-en **autant que vous voulez** (1, 3, 6, 10…) ; l'ordre de lecture est
+  tiré au hasard à chaque fois, pas l'ordre des numéros.
 - Si aucun fichier n'est présent, le jeu se lance normalement, sans musique.
 
 ## Lecture / coupure
