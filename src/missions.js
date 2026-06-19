@@ -3,8 +3,8 @@ import { PLANETS, CAMPAIGN_ORDER } from "./config.js";
 import { T } from "./strings.js";
 
 export class Missions {
-  constructor(system, hud, onWin) {
-    this.system = system; this.hud = hud; this.onWin = onWin;
+  constructor(system, hud, onWin, sfx) {
+    this.system = system; this.hud = hud; this.onWin = onWin; this.sfx = sfx;
     this.list = CAMPAIGN_ORDER
       .map((k) => PLANETS.find((p) => p.key === k))
       .filter((d) => d && d.mission)
@@ -92,6 +92,7 @@ export class Missions {
     this.hud.setCredits(this.credits);
     this.hud.renderLog(this.list);
     this.hud.toast(`${T("objComplete")(m.def.name)}  ·  ${T("reward")(reward)}`);
+    this.sfx && this.sfx.missionComplete();
 
     const next = this.list.findIndex((x) => !x.done);
     if (next === -1) {
@@ -101,5 +102,6 @@ export class Missions {
     this.index = next;
     this._refreshPanel();
     this.hud.toast(T("nextMission")(this.current().def.name), "warn");
+    this.sfx && this.sfx.missionNext();
   }
 }

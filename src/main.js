@@ -7,6 +7,7 @@ import { Hud } from "./hud.js";
 import { StarMap } from "./starmap.js";
 import { Input } from "./input.js";
 import { Music } from "./music.js";
+import { SFX } from "./sfx.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
 
@@ -18,18 +19,24 @@ const { scene, camera } = stage;
 const hud = new Hud();
 const input = new Input(canvas);
 const music = new Music();
+const sfx = new SFX();
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
 
-// ---- bouton musique (couper / remettre — la piste continue « en fantôme ») ----
+// ---- bouton son (couper / remettre musique + bruitages — la piste continue « en fantôme ») ----
 (function setupMusic() {
   const btn = document.getElementById("musicBtn");
   if (!btn) return;
   const refresh = () => {
     btn.classList.toggle("muted", music.muted);
-    btn.setAttribute("aria-label", music.muted ? "Remettre la musique" : "Couper la musique");
+    btn.setAttribute("aria-label", music.muted ? "Remettre le son" : "Couper le son");
   };
   refresh();
-  btn.addEventListener("click", (e) => { e.stopPropagation(); music.toggleMute(); refresh(); });
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    music.toggleMute();
+    sfx.setMuted(music.muted);
+    refresh();
+  });
 })();
 
 let system, ship, missions, starmap;
@@ -38,6 +45,7 @@ let state = "loading";
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
 const stats = { dist: 0, start: 0 };
+let prevMode = "cruise";
 const tmp = new THREE.Vector3();
 let lastNav = { dist: 1e9, key: null };
 
@@ -97,11 +105,12 @@ function placeShipStart() {
 function newGame() {
   placeShipStart();
   stats.dist = 0; stats.start = performance.now();
-  missions = new Missions(system, hud, onWin);
+  missions = new Missions(system, hud, onWin, sfx);
 }
 
 function startGame() {
   music.start();                           // 1er geste utilisateur -> autorise la lecture audio
+  sfx.start();
   if (!missions) newGame();
   for (const id of ["start", "win", "pause"]) document.getElementById(id).classList.add("hidden");
   document.getElementById("hud").classList.remove("hidden");
@@ -139,6 +148,7 @@ function closeMap() {
 function onWin(credits) {
   state = "win"; input.enabled = false; input.exitLock();
   document.body.classList.remove("warping");
+  sfx.win();
   const time = (performance.now() - stats.start) / 1000;
   const mm = Math.floor(time / 60), ss = Math.round(time % 60).toString().padStart(2, "0");
   const Mkm = (stats.dist * SCALE.unitKm / 1e6).toFixed(1);
@@ -151,16 +161,16 @@ function onWin(credits) {
 }
 
 document.getElementById("startBtn").onclick = startGame;
-document.getElementById("resumeBtn").onclick = resumeGame;
-document.getElementById("restartBtn").onclick = () => { newGame(); startGame(); };
-document.getElementById("helpBtn").onclick = () => document.getElementById("help").classList.toggle("hidden");
+document.getElementById("resumeBtn").onclick = () => { sfx.click(); resumeGame(); };
+document.getElementById("restartBtn").onclick = () => { sfx.click(); newGame(); startGame(); };
+document.getElementById("helpBtn").onclick = () => { sfx.click(); document.getElementById("help").classList.toggle("hidden"); };
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 input.onPress("unlock", () => { if (state === "playing") pauseGame(); });
 input.onPress("pause", () => (state === "playing" ? pauseGame() : state === "paused" ? resumeGame() : null));
-input.onPress("map", openMap);
+input.onPress("map", () => { sfx.click(); openMap(); });
 input.onPress("help", () => document.getElementById("help").classList.toggle("hidden"));
-document.getElementById("radar").addEventListener("click", openMap);
+document.getElementById("radar").addEventListener("click", () => { sfx.click(); openMap(); });
 addEventListener("blur", () => pauseGame());
 
 // ---- boucle ----
@@ -175,7 +185,7 @@ function frame(now) {
     while (acc >= STEP && guard++ < 5) {
       lastNav = system.nearestSurface(ship.group.position);
       ship.update(STEP, input, lastNav);
-      ship.resolveCollision(system.bodies.values());
+      if (ship.resolveCollision(system.bodies.values())) sfx.impact();
       missions.update(STEP, ship, input);
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
@@ -186,6 +196,13 @@ function frame(now) {
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
 
     const mode = ship.warping ? "warp" : ship.boosting ? "boost" : "cruise";
+    if (mode !== prevMode) {
+      if (mode === "warp") sfx.warpOn();
+      else if (prevMode === "warp") sfx.warpOff();
+      else if (mode === "boost") sfx.boostOn();
+      prevMode = mode;
+    }
+    sfx.updateEngine(ship.throttleVis, mode);
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
     document.body.classList.toggle("warping", ship.warping && ship.warpAmount > 0.25);
     const nb = lastNav.key && system.bodies.get(lastNav.key);
@@ -202,6 +219,7 @@ function frame(now) {
   } else if (system) {
     system.update(dt * 0.4, camera);
     if (ship) ship.updateCamera(dt, camera);
+    sfx.updateEngine(0, "cruise");
   }
 
   if (system && system.sky) system.sky.position.copy(camera.position);   // fond stellaire à l'infini

@@ -20,7 +20,7 @@ export class Music {
     this.muted = false;
     try { this.muted = localStorage.getItem("musicMuted") === "1"; } catch (e) {}
     this.audio.muted = this.muted;
-    this.audio.volume = 1.0;
+    this.audio.volume = 0.6;                       // un peu en retrait derrière les bruitages
     this._gapTimer = null;
     // fin d'une piste -> silence puis piste suivante ; erreur de lecture -> idem (on saute)
     this.audio.addEventListener("ended", () => this._scheduleNext());
