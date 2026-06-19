@@ -96,8 +96,11 @@
 
   <!-- comms : dialogues radio (ARIA / Korolev / le Signal) -->
   <div id="comms" class="hidden">
-    <span id="commsWho" class="comms-who"></span>
-    <span id="commsText" class="comms-text"></span>
+    <div id="commsAvatar" class="comms-avatar av"></div>
+    <div class="comms-body">
+      <span id="commsWho" class="comms-who"></span>
+      <span id="commsText" class="comms-text"></span>
+    </div>
   </div>
 
   <!-- radar -->
@@ -122,6 +125,20 @@
       <button id="cinemaCta" class="btn primary hidden">DÉCOLLER ▸</button>
     </div>
     <p class="cinema-hint">Cliquez ou appuyez sur Espace pour avancer</p>
+  </div>
+</div>
+
+<!-- ======================= CHOIX MORAL (Saturne) ======================= -->
+<div id="choice" class="overlay hidden">
+  <div class="panel">
+    <div class="av aria choice-av"></div>
+    <h2 class="choice-title">UN CHOIX</h2>
+    <p id="choiceText" class="subtitle">ARIA reconstitue les fragments. La croyez-vous&nbsp;?</p>
+    <div class="choice-btns">
+      <button id="choiceTrust" class="btn primary">JE LUI FAIS CONFIANCE</button>
+      <button id="choiceDoubt" class="btn">JE GARDE DES DOUTES</button>
+    </div>
+    <p class="hint">Votre décision orientera la fin de l'expédition.</p>
   </div>
 </div>
 

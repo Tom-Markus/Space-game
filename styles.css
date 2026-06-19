@@ -270,7 +270,8 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 
 /* ---------- comms : sous-titres radio (bas-centre, au-dessus de la télémétrie) ---------- */
 #comms{position:fixed;left:50%;bottom:98px;transform:translate(-50%,8px);z-index:21;pointer-events:none;
-  max-width:min(680px,86vw);width:max-content;padding:11px 20px 12px;
+  display:flex;align-items:center;gap:13px;
+  max-width:min(680px,86vw);width:max-content;padding:11px 18px 12px;
   background:linear-gradient(165deg,rgba(10,20,40,.84),rgba(6,12,26,.76));
   border:1px solid var(--brd);border-left:2px solid var(--brd-hi);border-radius:13px;backdrop-filter:blur(9px);
   box-shadow:0 8px 34px rgba(0,8,24,.6),inset 0 1px 0 rgba(150,200,255,.12);
@@ -303,7 +304,9 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   text-align:center;text-shadow:0 0 14px rgba(155,140,255,.5);animation:cinetag 2.2s ease-in-out infinite}
 @keyframes cinetag{50%{opacity:.5}}
 .cinema-log{display:flex;flex-direction:column;gap:13px;overflow-y:auto;padding:6px 6px;min-height:38vh;max-height:60vh}
-.cine-line{font-size:16px;line-height:1.55;text-align:left;opacity:0;animation:cineIn .4s ease forwards}
+.cine-line{display:flex;gap:12px;align-items:flex-start;font-size:16px;line-height:1.55;text-align:left;opacity:0;animation:cineIn .4s ease forwards}
+.cine-body{flex:1;min-width:0}
+.cine-av{flex:0 0 auto;width:38px;height:38px;margin-top:1px}
 @keyframes cineIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .cine-who{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;font-weight:800;
   margin-right:10px;color:var(--accent)}
@@ -349,4 +352,69 @@ body.staticfx #fxflash{opacity:.7;animation:staticflick .1s steps(2) infinite;
   .cine-line{font-size:14.5px}
   .cinema-box{padding:18px 18px}
   .cinema-log{min-height:42vh}
+}
+
+/* ===================================================================
+   PORTRAITS ANIMÉS (avatars vectoriels) + choix moral + pulse Signal
+   =================================================================== */
+.av{position:relative;border-radius:50%;flex:0 0 auto;overflow:hidden;background:#0a1420;
+  border:1px solid rgba(150,200,255,.25)}
+.comms-avatar{width:40px;height:40px}
+.comms-body{display:flex;flex-direction:column;min-width:0}
+
+/* — ARIA : orbe d'IA cyan, anneau qui respire + ligne de scan — */
+.av.aria{background:radial-gradient(circle at 50% 42%,#d6f6ff,#27a6e0 52%,#06243c);
+  border-color:rgba(98,216,255,.6);box-shadow:inset 0 0 10px rgba(120,220,255,.5),0 0 10px rgba(98,216,255,.45)}
+.av.aria::before{content:"";position:absolute;inset:22%;border-radius:50%;border:2px solid rgba(255,255,255,.85);
+  box-shadow:0 0 8px rgba(170,235,255,.8);animation:avAriaPulse 2.2s ease-in-out infinite}
+.av.aria::after{content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(220,250,255,.95),transparent);
+  box-shadow:0 0 7px rgba(170,235,255,.9);animation:avAriaScan 2.6s ease-in-out infinite}
+@keyframes avAriaPulse{0%,100%{transform:scale(.82);opacity:.7}50%{transform:scale(1.05);opacity:1}}
+@keyframes avAriaScan{0%,100%{transform:translateY(-7px)}50%{transform:translateY(7px)}}
+
+/* — VASQUEZ / Korolev : écran radar ambre, balayage tournant — */
+.av.control{border-color:rgba(255,194,77,.55);box-shadow:inset 0 0 10px rgba(255,180,70,.35),0 0 9px rgba(255,194,77,.35);
+  background:repeating-radial-gradient(circle at 50% 50%,rgba(255,194,77,.16) 0 1px,transparent 1px 7px),
+    radial-gradient(circle at 50% 50%,#3a2a10,#160f04)}
+.av.control::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(255,194,77,.6),transparent 38%);animation:avSweep 3s linear infinite}
+.av.control::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;
+  background:#ffd27a;box-shadow:0 0 8px rgba(255,194,77,.95)}
+@keyframes avSweep{to{transform:rotate(1turn)}}
+
+/* — SIGNAL : glyphe violet instable, parasites + pulsation — */
+.av.signal{border-color:rgba(155,140,255,.6);box-shadow:inset 0 0 10px rgba(155,140,255,.4),0 0 10px rgba(155,140,255,.5);
+  background:radial-gradient(circle at 50% 50%,#2a1a52,#0a0618)}
+.av.signal::before{content:"";position:absolute;inset:0;mix-blend-mode:screen;
+  background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(185,165,255,.5) 3px 4px);
+  animation:avGlitch .18s steps(2) infinite}
+.av.signal::after{content:"";position:absolute;left:14%;right:14%;top:50%;height:2px;transform:translateY(-50%);
+  background:rgba(210,190,255,.95);box-shadow:0 0 9px rgba(170,150,255,.95);animation:avSigFlick 1.3s ease-in-out infinite}
+@keyframes avGlitch{0%{transform:translateX(0)}100%{transform:translateX(-2px)}}
+@keyframes avSigFlick{0%,100%{opacity:.4;width:40%;left:30%}50%{opacity:1;left:14%;right:14%}}
+
+/* — SYS : console terminal — */
+.av.sys{border-color:rgba(120,160,210,.4);background:radial-gradient(circle at 50% 50%,#11202f,#060d16)}
+.av.sys::before{content:">_";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#86d9ff;font-family:var(--mono);font-size:13px;font-weight:700;text-shadow:0 0 8px rgba(98,216,255,.6);
+  animation:avSysBlink 1.4s steps(2) infinite}
+@keyframes avSysBlink{50%{opacity:.4}}
+
+/* — choix moral (Saturne) — */
+#choice{z-index:42}
+.choice-av{width:74px;height:74px;margin:0 auto 8px}
+.choice-title{margin:.1em 0;font-size:23px;letter-spacing:.26em;font-weight:800;
+  background:linear-gradient(90deg,#a9ecff,#9b8cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.choice-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:16px 0 6px}
+
+/* — pulsation violette quand le Signal parle (en jeu) — */
+body.signalfx #fxflash{opacity:1;animation:signalpulse 1.1s ease-out 1;
+  background:radial-gradient(ellipse at center,rgba(155,140,255,.10) 0%,transparent 50%),
+    radial-gradient(ellipse at center,transparent 55%,rgba(120,90,255,.24) 100%)}
+@keyframes signalpulse{0%{opacity:0}16%{opacity:1}100%{opacity:0}}
+
+@media (max-width:780px){
+  .comms-avatar{width:34px;height:34px}
+  .cine-av{width:32px;height:32px}
 }

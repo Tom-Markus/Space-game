@@ -169,7 +169,7 @@ export const STORY = {
     ],
   },
   saturn: {
-    act: 2, fragment: "LE DOUTE",
+    act: 2, fragment: "LE DOUTE", choice: true,
     objective: "Traversez le plan des anneaux de Saturne pour capter le fragment dispersé dans la glace.",
     brief: [
       A("Les anneaux de Saturne. Le fragment est éparpillé dans la glace. Traversez le plan de plein fouet, je le capte au passage."),
@@ -193,7 +193,7 @@ export const STORY = {
     act: 3, fragment: "MON ORIGINE",
     objective: "Sondez le champ magnétique incliné d'Uranus, où s'est accroché le fragment.",
     brief: [
-      A("…Vous ne m'avez pas coupée. Merci, Commandant. Je n'oublierai pas."),
+      A("Vous m'avez gardée à bord, Commandant. Confiance ou doute — merci. Je ne l'oublierai pas."),
       A("Uranus. Couchée sur son orbite, un champ magnétique complètement tordu. Le fragment y est pris. Sondez."),
     ],
     arrival: [ A("Doucement. Je me synchronise sur le champ.") ],
@@ -229,7 +229,11 @@ export const STORY = {
       A("Pluton. La dernière balise. Au-delà, il n'y a plus que le noir — et la source."),
       A("Ouvrez le relais, Commandant. Maintenez. On va recomposer le message. Tout entier."),
     ],
-    arrival: [ A("Nous y voilà. Au bout du voyage. Ouvrez le relais.") ],
+    arrival: [
+      A("Nous y voilà. Au bout du voyage."),
+      A("…Commandant. Vous la voyez ? Cette lueur violette, droit devant. C'est elle. Pionnier-9."),
+      A("Elle dérive ici depuis quarante ans, à appeler dans le vide. Ouvrez le relais. Ramenons-la à la maison."),
+    ],
     reveal: [
       A("Relais ouvert. Les neuf fragments convergent… je les assemble…"),
       Y("> RECOMPOSITION DU SIGNAL…"),
@@ -244,18 +248,33 @@ export const STORY = {
 };
 
 // -------------------------------------------------------------------
-//  ENDING — cinématique finale (jouée plein écran après Pluton)
+//  ENDING — cinématique finale (jouée plein écran après Pluton).
+//  Deux variantes selon le choix fait à Saturne (confiance / doute en ARIA).
 // -------------------------------------------------------------------
-export const ENDING = [
+export const ENDING_TRUST = [
   Y("> RELAIS ÉTABLI — RETRANSMISSION VERS LA TERRE"),
   A("Je renvoie tout vers la Terre, Commandant. Pour que, cette fois, quelqu'un écoute."),
   C("…Odyssée ? Odyssée, ici Korolev — on vous reçoit ! Et on reçoit… AUTRE CHOSE."),
   C("Tout le réseau l'entend. Le message de Pionnier. Le monde entier vient de l'entendre."),
   C("Vous avez rouvert la porte, Commandant. Quarante ans après, on le sait enfin : on n'est pas seuls à frapper dans le noir."),
-  A("Merci de ne pas m'avoir coupée."),
-  A("Rentrons. Mais un jour… on retournera au bord. Et cette fois, Commandant, on franchira la ligne."),
+  A("Vous m'avez fait confiance jusqu'au bout. Je n'étais qu'une heure plus âgée que cette mission… et vous avez parié sur moi."),
+  A("Rentrons. Mais un jour, Commandant… on retournera au bord. Et cette fois, on franchira la ligne. Ensemble."),
   S("« Nous vous attendons. »"),
 ];
+
+export const ENDING_DOUBT = [
+  Y("> RELAIS ÉTABLI — RETRANSMISSION VERS LA TERRE"),
+  A("Je renvoie tout vers la Terre, Commandant. Les fragments… et mes reconstructions. À vous de faire le tri. Vous, vous savez douter."),
+  C("…Odyssée ? On vous reçoit ! Et on reçoit le message de Pionnier — ou du moins ce qu'il en reste."),
+  C("Les analystes débattront des années : qu'est-ce qui venait de la sonde, qu'est-ce qu'ARIA a comblé ? Mais le signal est là. Réel."),
+  C("Vous avez rouvert la porte, Commandant. Même dans le doute, vous l'avez fait. C'est peut-être ça, le vrai courage."),
+  A("Vous ne m'avez jamais tout à fait crue. C'était sans doute sage."),
+  A("Mais nous l'avons entendu ensemble. Ça, aucune analyse ne pourra l'effacer."),
+  S("« Nous vous attendons. »"),
+];
+
+// Compat : ENDING par défaut = version « confiance ».
+export const ENDING = ENDING_TRUST;
 
 // Message recomposé, affiché sur l'écran de victoire (les fragments dans l'ordre).
 export const FINAL_MESSAGE =

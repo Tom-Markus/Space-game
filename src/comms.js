@@ -15,8 +15,8 @@ const READ_PER_CHAR = 0.045;
 const IDLE_HIDE = 2.4;          // délai avant de masquer le panneau (s)
 
 export class Comms {
-  constructor({ panel, whoEl, textEl, sfx, onFx }) {
-    this.panel = panel; this.whoEl = whoEl; this.textEl = textEl;
+  constructor({ panel, whoEl, textEl, avatarEl, sfx, onFx }) {
+    this.panel = panel; this.whoEl = whoEl; this.textEl = textEl; this.avatarEl = avatarEl;
     this.sfx = sfx; this.onFx = onFx || (() => {});
     this.queue = [];
     this.cur = null;
@@ -47,6 +47,7 @@ export class Comms {
     const sp = SPEAKERS[b.who] || SPEAKERS.sys;
     this.whoEl.textContent = sp.name;
     this.whoEl.className = "comms-who " + sp.cls;
+    if (this.avatarEl) this.avatarEl.className = "comms-avatar av " + sp.cls;   // portrait animé
     this.panel.setAttribute("data-who", sp.cls);   // teinte le panneau selon le locuteur
     this.textEl.textContent = "";
     this.panel.classList.remove("hidden");
@@ -57,6 +58,7 @@ export class Comms {
       if (b.who === "signal" && this.sfx.signal) this.sfx.signal();
       else if (this.sfx.comm) this.sfx.comm(b.who);
     }
+    if (b.who === "signal") this.onFx("signal");   // pulsation violette à chaque message du Signal
     if (b.fx) this.onFx(b.fx);
   }
 

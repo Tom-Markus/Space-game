@@ -8,8 +8,8 @@ import { STORY } from "./story.js";
 // traversée) ET déclenche la mise en scène radio (briefing, arrivée, set-piece,
 // révélation du fragment) via le système de comms.
 export class Missions {
-  constructor(system, hud, onWin, sfx, comms) {
-    this.system = system; this.hud = hud; this.onWin = onWin; this.sfx = sfx; this.comms = comms;
+  constructor(system, hud, onWin, sfx, comms, onChoice) {
+    this.system = system; this.hud = hud; this.onWin = onWin; this.sfx = sfx; this.comms = comms; this.onChoice = onChoice;
     this.list = CAMPAIGN_ORDER
       .map((k) => PLANETS.find((p) => p.key === k))
       .filter((d) => d && d.mission)
@@ -126,12 +126,14 @@ export class Missions {
 
     const next = this.list.findIndex((x) => !x.done);
     const last = next === -1;
+    // À la fin de la révélation : victoire (dernière mission) ou choix moral (Saturne).
+    const revealDone = last ? () => this._finish()
+      : (st.choice && this.onChoice ? () => this.onChoice() : null);
 
-    // Révélation du fragment. Sur la dernière mission, elle enchaîne sur la victoire.
     if (this.comms && st.reveal) {
-      this.comms.playSequence(st.reveal, last ? () => this._finish() : null);
-    } else if (last) {
-      this._finish();
+      this.comms.playSequence(st.reveal, revealDone);
+    } else if (revealDone) {
+      revealDone();
     }
 
     if (last) { this.activeKey = null; return; }
