@@ -16,6 +16,31 @@ import { SHIP, SCALE, QUALITY } from "./config.js";
 
 applyStaticStrings();
 
+// ---- assets optionnels (Higgsfield) : portraits + key art ----
+// Déposez les images dans assets/img/ et renseignez portraits.json. Si absent,
+// repli automatique sur les avatars dessinés + l'écran-titre animé.
+fetch("./assets/img/portraits.json")
+  .then((r) => (r.ok ? r.json() : null))
+  .then((m) => {
+    if (!m) return;
+    const css = [];
+    for (const cls of ["aria", "control", "vance", "signal"]) {
+      if (m[cls]) css.push(`.av.${cls}{background-image:url("./assets/img/${m[cls]}");background-size:cover;background-position:center}`);
+    }
+    if (css.length) {
+      const s = document.createElement("style");
+      s.textContent = css.join("\n");
+      document.head.appendChild(s);
+    }
+    if (m.keyart) {
+      const el = document.getElementById("start");
+      if (el) {
+        el.style.background = `linear-gradient(rgba(3,6,14,.55),rgba(2,4,10,.9)), url("./assets/img/${m.keyart}") center/cover no-repeat`;
+      }
+    }
+  })
+  .catch(() => {});
+
 const canvas = document.getElementById("scene");
 const stage = createStage(canvas);
 const { scene, camera } = stage;
