@@ -22,9 +22,12 @@ export function createStage(canvas) {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  // strength / radius / threshold : bloom plus doux pour éviter qu'une petite
-  // source brillante (Soleil lointain) ne se transforme en tache carrée saturée.
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.7, 0.88);
+  // strength / radius / threshold : bloom modéré et LARGE (radius élevé) -> diffuse
+  // le disque solaire en un voile rond. Le gros du halo « puissant » est porté par
+  // les sprites ronds du Soleil (jamais carrés) ; le bloom ne fait qu'étaler le
+  // disque. Seuil haut (0.86) + force contenue (0.62) : un Soleil lointain (1 px)
+  // ne se transforme pas en carré, et de près l'écran ne sature pas en blanc.
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.62, 0.9, 0.86);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 

@@ -144,64 +144,18 @@ void main(){
   gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
 }`;
 
-// Anneaux : disque de particules (pas une feuille 2D plate). Léger relief vertical
-// (épaisseur), éclairage solaire + rétro-diffusion (glow à contre-jour), grain fin,
-// et OMBRE de la planète projetée dessus. Tout en repère centré planète (précision).
-const RING_VERT = `
-#include <common>
-#include <logdepthbuf_pars_vertex>
-uniform float thickness;
-varying vec2 vUv; varying vec3 vRel; varying vec3 vNormalW;
-float hash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
-void main(){
-  vUv = uv;
-  float ang = atan(position.y, position.x);
-  float rad = length(position.xy);
-  // épaisseur : petit déplacement vertical pseudo-aléatoire -> volume granuleux,
-  // visible par la tranche au lieu d'une ligne infiniment fine.
-  float n = hash(vec2(floor(ang * 90.0), floor(rad * 0.00018)));
-  vec3 p = position;
-  p.z += (n - 0.5) * 2.0 * thickness;
-  vRel = mat3(modelMatrix) * p;                      // position relative au centre planète (précise)
-  vNormalW = normalize(mat3(modelMatrix) * vec3(0.0, 0.0, 1.0));
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-  #include <logdepthbuf_vertex>
-}`;
+// Anneaux : disque texturé simple (plan équatorial), alpha depuis la carte/alpha.
 const RING_FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform sampler2D ringMap; uniform sampler2D alphaMap; uniform float useAlpha; uniform float alphaMul;
-uniform vec3 sunDir; uniform vec3 camRel; uniform float planetR;
-varying vec2 vUv; varying vec3 vRel; varying vec3 vNormalW;
+uniform sampler2D ringMap; uniform sampler2D alphaMap; uniform float useAlpha; uniform float alphaMul; varying vec2 vUv;
 ${SRGB2LIN}
-float hash1(float x){ return fract(sin(x * 127.1) * 43758.5453); }
 void main(){
   #include <logdepthbuf_fragment>
   vec4 c = texture2D(ringMap, vUv);
   float a = (useAlpha > 0.5 ? texture2D(alphaMap, vUv).r : clamp((c.r + c.g + c.b) / 3.0 * 1.7, 0.0, 1.0)) * alphaMul;
   if (a < 0.02) discard;
-  vec3 col = toLin(c.rgb);
-
-  // grain fin : fines variations de densité le long du rayon (granularité)
-  a *= 0.82 + 0.32 * hash1(floor(vUv.x * 1100.0));
-
-  // éclairage : selon l'angle Soleil/plan + rétro-diffusion (glace -> anneaux
-  // très lumineux à contre-jour, comme sur les vraies photos de Saturne)
-  vec3 V = normalize(camRel - vRel);                          // fragment -> caméra
-  float sunFace = abs(dot(normalize(vNormalW), sunDir));      // 1 = Soleil perpendiculaire au plan
-  float lit = 0.4 + 0.6 * sunFace;
-  float forward = pow(clamp(dot(-V, sunDir), 0.0, 1.0), 3.0); // rétro-éclairage
-  col *= lit;
-  col += col * forward * 1.3;
-  a = clamp(a * (0.85 + 0.55 * forward), 0.0, 1.0);
-
-  // ombre de la planète : cylindre d'ombre côté nuit (s<0) de rayon planetR
-  float s = dot(vRel, sunDir);
-  float perp = length(vRel - s * sunDir);
-  float shadow = smoothstep(0.0, -planetR * 0.05, s) * smoothstep(planetR, planetR * 0.95, perp);
-  col *= mix(1.0, 0.08, shadow);
-
-  gl_FragColor = vec4(col, a);
+  gl_FragColor = vec4(toLin(c.rgb), a);
 }`;
 
 const SKY_VERT = `
@@ -249,16 +203,16 @@ function glowTexture(stops, s = 512) {
 }
 // Cœur dense et chaud autour du disque solaire (dégradé qui s'éteint avant le bord).
 const SUN_CORE = [
-  [0.00, "rgba(255,252,242,1.0)"], [0.10, "rgba(255,247,220,0.95)"],
-  [0.22, "rgba(255,226,164,0.66)"], [0.36, "rgba(255,194,112,0.34)"],
-  [0.50, "rgba(255,164,80,0.15)"], [0.66, "rgba(255,146,64,0.045)"],
-  [0.82, "rgba(255,140,60,0.0)"], [1.0, "rgba(255,140,60,0.0)"],
+  [0.00, "rgba(255,253,246,1.0)"], [0.12, "rgba(255,249,226,1.0)"],
+  [0.24, "rgba(255,231,172,0.85)"], [0.38, "rgba(255,201,120,0.50)"],
+  [0.52, "rgba(255,172,86,0.24)"], [0.68, "rgba(255,150,66,0.09)"],
+  [0.84, "rgba(255,142,60,0.015)"], [1.0, "rgba(255,140,60,0.0)"],
 ];
 // Halo externe très diffus (toujours rond — reste visible et lisse à grande distance).
 const SUN_HALO = [
-  [0.00, "rgba(255,249,230,0.9)"], [0.13, "rgba(255,238,196,0.56)"],
-  [0.27, "rgba(255,216,158,0.29)"], [0.43, "rgba(255,194,124,0.13)"],
-  [0.60, "rgba(255,178,98,0.04)"], [0.78, "rgba(255,166,86,0.008)"], [1.0, "rgba(255,160,80,0.0)"],
+  [0.00, "rgba(255,250,233,1.0)"], [0.12, "rgba(255,241,202,0.78)"],
+  [0.25, "rgba(255,221,164,0.46)"], [0.40, "rgba(255,199,128,0.23)"],
+  [0.56, "rgba(255,181,102,0.10)"], [0.74, "rgba(255,168,88,0.03)"], [1.0, "rgba(255,160,80,0.0)"],
 ];
 function makeGlowSprite(stops) {
   // depthWrite false + depthTest true : le halo se fond autour du disque et reste
@@ -276,7 +230,6 @@ export class SolarSystem {
     this.bodies = new Map();     // key -> {def,holder,radius,getWorldPosition}
     this.tex = {};
     this._atmoMats = [];
-    this._rings = [];
     this._clouds = [];
     this._tmp = new THREE.Vector3();
     this._t = 0;
@@ -313,14 +266,16 @@ export class SolarSystem {
     scene.add(new THREE.AmbientLight(0x14223c, 0.025));
 
     // ---- Soleil ----
-    // couleur > 1 : le disque dépasse le seuil du bloom -> léger halo rond ajouté
-    // par le post-traitement, en plus des sprites (eux toujours ronds).
-    const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(1.35, 1.2, 0.96) });
-    const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 64, 48), sunMat);
+    // couleur >> 1 : le disque dépasse largement le seuil du bloom -> halo rond
+    // marqué ajouté par le post-traitement, en plus des sprites (eux toujours ronds).
+    // Sphère haute résolution (128×96) : aucun bord facetté que le bloom amplifierait
+    // en « formes géométriques » quand on s'approche.
+    const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(2.05, 1.75, 1.4) });
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 128, 96), sunMat);
     scene.add(sun); this.sun = sun;
     // halo solaire en deux couches : un cœur dense + un voile diffus.
-    const core = makeGlowSprite(SUN_CORE); core.scale.setScalar(SUN.radius * 3.2);
-    const halo = makeGlowSprite(SUN_HALO); halo.scale.setScalar(SUN.radius * 9.0);
+    const core = makeGlowSprite(SUN_CORE); core.scale.setScalar(SUN.radius * 4.0);
+    const halo = makeGlowSprite(SUN_HALO); halo.scale.setScalar(SUN.radius * 12.0);
     sun.add(halo); sun.add(core);
     this.sunGlow = { core, halo };
     this.bodies.set("sun", { def: SUN, holder: sun, radius: SUN.radius, getWorldPosition: (v) => v.set(0, 0, 0) });
@@ -426,8 +381,8 @@ export class SolarSystem {
   }
 
   _buildRing(def, parent) {
-    const r = def.ring;
-    const geo = new THREE.RingGeometry(r.inner, r.outer, 220, 8);
+    const r = def.ring, segs = 160;
+    const geo = new THREE.RingGeometry(r.inner, r.outer, segs, 4);
     const pos = geo.attributes.position, uv = geo.attributes.uv;
     const v = new THREE.Vector3();
     for (let i = 0; i < pos.count; i++) {
@@ -441,19 +396,21 @@ export class SolarSystem {
         alphaMap: { value: this._color(r.alpha || r.map, false) },
         useAlpha: { value: r.alpha ? 1 : 0 },
         alphaMul: { value: r.faint ? 0.5 : 1.0 },
-        thickness: { value: (r.outer - r.inner) * 0.012 },   // léger relief vertical
-        sunDir: { value: new THREE.Vector3(1, 0, 0) },
-        camRel: { value: new THREE.Vector3() },
-        planetR: { value: def.radius },
       },
-      vertexShader: RING_VERT, fragmentShader: RING_FRAG,
-      transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      vertexShader: `#include <common>
+        #include <logdepthbuf_pars_vertex>
+        varying vec2 vUv;
+        void main(){
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          #include <logdepthbuf_vertex>
+        }`,
+      fragmentShader: RING_FRAG, transparent: true, side: THREE.DoubleSide, depthWrite: false,
     });
     const ring = new THREE.Mesh(geo, mat);
     ring.rotation.x = -Math.PI / 2;          // dans le plan équatorial
     if (r.vertical) ring.rotation.x = 0;     // Uranus : anneaux quasi verticaux
     parent.add(ring);
-    this._rings.push({ mat, key: def.key });
   }
 
   _orbitLine(radius, parent = this.scene, color = 0x2c4a66, opacity = 0.35) {
@@ -517,19 +474,19 @@ export class SolarSystem {
       // Taille proportionnelle au disque solaire vu : grandit légèrement avec la
       // distance pour rester visible, mais reste TOUJOURS proche du diamètre apparent
       // -> jamais une « grosse boule » carrée bloomée loin du Soleil.
-      const coreMin = SUN.radius * 3.0, haloMin = SUN.radius * 8.0;
-      const coreD = d * 0.03, haloD = d * 0.085;
+      const coreMin = SUN.radius * 4.0, haloMin = SUN.radius * 11.0;
+      const coreD = d * 0.04, haloD = d * 0.11;
       this.sunGlow.core.scale.setScalar(Math.max(coreMin, coreD) * pulse);
       this.sunGlow.halo.scale.setScalar(Math.max(haloMin, haloD) * pulse);
     }
   }
 
-  // Uniformes des atmosphères ET des anneaux, calculés en double précision côté
-  // CPU et juste AVANT le rendu (caméra à jour, pas de retard d'une frame) :
+  // Uniformes des atmosphères, calculés en double précision côté CPU et juste
+  // AVANT le rendu (caméra à jour, pas de retard d'une frame) :
   //  - matrices caméra -> rayon de vue exact (anti-banding)
-  //  - camRel/sunDir dans le repère centré sur la planète -> jour/nuit + ombres précis.
+  //  - camRel/sunDir dans le repère centré sur la planète -> jour/nuit précis.
   syncAtmosphere(camera) {
-    if (!this._atmoMats.length && !this._rings.length) return;
+    if (!this._atmoMats.length) return;
     camera.updateMatrixWorld();
     for (const { mat, key } of this._atmoMats) {
       const b = this.bodies.get(key);
@@ -540,14 +497,6 @@ export class SolarSystem {
       u.viewInv.value.copy(camera.matrixWorld);
       u.camRel.value.subVectors(camera.position, this._tmp);   // caméra relative au centre
       u.sunDir.value.copy(this._tmp).multiplyScalar(-1).normalize();  // vers le Soleil (origine)
-    }
-    for (const { mat, key } of this._rings) {
-      const b = this.bodies.get(key);
-      if (!b) continue;
-      b.getWorldPosition(this._tmp);
-      const u = mat.uniforms;
-      u.camRel.value.subVectors(camera.position, this._tmp);
-      u.sunDir.value.copy(this._tmp).multiplyScalar(-1).normalize();
     }
   }
 

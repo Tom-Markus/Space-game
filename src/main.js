@@ -6,6 +6,7 @@ import { Missions } from "./missions.js";
 import { Hud } from "./hud.js";
 import { StarMap } from "./starmap.js";
 import { Input } from "./input.js";
+import { Music } from "./music.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
 
@@ -16,7 +17,20 @@ const stage = createStage(canvas);
 const { scene, camera } = stage;
 const hud = new Hud();
 const input = new Input(canvas);
+const music = new Music();
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+
+// ---- bouton musique (couper / remettre — la piste continue « en fantôme ») ----
+(function setupMusic() {
+  const btn = document.getElementById("musicBtn");
+  if (!btn) return;
+  const refresh = () => {
+    btn.classList.toggle("muted", music.muted);
+    btn.setAttribute("aria-label", music.muted ? "Remettre la musique" : "Couper la musique");
+  };
+  refresh();
+  btn.addEventListener("click", (e) => { e.stopPropagation(); music.toggleMute(); refresh(); });
+})();
 
 let system, ship, missions, starmap;
 let navTarget = null;                    // cap choisi par le joueur via la carte
@@ -87,6 +101,7 @@ function newGame() {
 }
 
 function startGame() {
+  music.start();                           // 1er geste utilisateur -> autorise la lecture audio
   if (!missions) newGame();
   for (const id of ["start", "win", "pause"]) document.getElementById(id).classList.add("hidden");
   document.getElementById("hud").classList.remove("hidden");
