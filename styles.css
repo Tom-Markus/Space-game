@@ -401,6 +401,21 @@ body.staticfx #fxflash{opacity:.7;animation:staticflick .1s steps(2) infinite;
   animation:avSysBlink 1.4s steps(2) infinite}
 @keyframes avSysBlink{50%{opacity:.4}}
 
+/* — LA VOIX (Vance) : orbe humaine chaleureuse, empreinte vocale qui pulse — */
+.av.vance{border-color:rgba(255,181,158,.6);box-shadow:inset 0 0 10px rgba(255,160,130,.4),0 0 10px rgba(255,170,140,.45);
+  background:radial-gradient(circle at 50% 45%,#ffe0d2,#e8896b 55%,#5a2a1e)}
+.av.vance::before{content:"";position:absolute;inset:24%;border-radius:50%;border:2px solid rgba(255,232,222,.85);
+  box-shadow:0 0 8px rgba(255,205,185,.8);animation:avAriaPulse 2.6s ease-in-out infinite}
+.av.vance::after{content:"";position:absolute;left:50%;top:50%;width:54%;height:2px;transform:translate(-50%,-50%);
+  background:rgba(255,235,225,.95);box-shadow:0 0 7px rgba(255,200,180,.95);animation:avSigFlick 1.6s ease-in-out infinite}
+
+/* couleurs « LA VOIX » dans les comms et les cinématiques */
+.comms-who.vance{color:#ffb59e;text-shadow:0 0 10px rgba(255,150,120,.45)}
+#comms[data-who="vance"]{border-left-color:#ffb59e}
+#comms[data-who="vance"] .comms-text{color:#ffe2d6;font-style:italic}
+.cine-line.vance .cine-who{color:#ffb59e}
+.cine-line.vance .cine-text{color:#ffe2d6;font-style:italic;text-shadow:0 0 12px rgba(255,150,120,.25)}
+
 /* — choix moral (Saturne) — */
 #choice{z-index:42}
 .choice-av{width:74px;height:74px;margin:0 auto 8px}
@@ -417,4 +432,44 @@ body.signalfx #fxflash{opacity:1;animation:signalpulse 1.1s ease-out 1;
 @media (max-width:780px){
   .comms-avatar{width:34px;height:34px}
   .cine-av{width:32px;height:32px}
+}
+
+/* ===================================================================
+   GAMEPLAY HUD — anneau de verrouillage, intégrité, alertes, dégâts
+   =================================================================== */
+/* anneau de verrouillage autour du réticule (se remplit avec la progression) */
+#reticle .lockring{fill:none;stroke:var(--accent);stroke-width:3;opacity:0;stroke-linecap:round;
+  stroke-dasharray:188.5;stroke-dashoffset:188.5;transform:rotate(-90deg);transform-origin:50% 50%;
+  filter:drop-shadow(0 0 5px rgba(98,216,255,.7));transition:stroke-dashoffset .12s linear,opacity .25s,stroke .25s}
+#reticle .lockring.active{opacity:.95}
+#reticle .lockring.full{stroke:var(--ok);filter:drop-shadow(0 0 8px rgba(98,255,176,.95))}
+
+/* widget coque / bouclier (bas-gauche) */
+#statusWidget{position:fixed;left:20px;bottom:20px;z-index:20;width:174px;pointer-events:none;
+  background:linear-gradient(165deg,rgba(14,28,52,.62),rgba(6,13,28,.52));
+  border:1px solid var(--brd);border-left:2px solid var(--brd-hi);border-radius:11px;padding:9px 12px;
+  backdrop-filter:blur(8px);box-shadow:0 6px 30px rgba(0,8,24,.5),inset 0 1px 0 rgba(150,200,255,.12)}
+#statusWidget::before{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--brd-hi),transparent);opacity:.7}
+.st-row{display:flex;align-items:center;gap:9px;margin:4px 0}
+.st-label{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;color:#8fa8cd;width:56px}
+.st-bar{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;border:1px solid rgba(120,160,210,.15)}
+.st-fill{height:100%;width:100%;border-radius:4px;transition:width .25s ease,background .3s}
+.st-fill.hull{background:linear-gradient(90deg,#3bd07a,#62ffb0)}
+.st-fill.shield{background:linear-gradient(90deg,#2b8fc6,#62d8ff)}
+#statusWidget.critical{border-left-color:var(--danger);animation:stcrit .7s steps(2) infinite}
+#statusWidget.critical .st-fill.hull{background:linear-gradient(90deg,#ff3b3b,#ff7a5e)}
+@keyframes stcrit{50%{box-shadow:0 0 22px rgba(255,60,70,.55)}}
+
+/* invite d'alerte (danger) */
+#prompt.warn{border-color:var(--danger);color:#ffd9dd;box-shadow:0 0 30px rgba(255,80,90,.5);animation:pp .7s infinite}
+#prompt.warn b{color:var(--danger)}
+
+/* vignette rouge de dégâts */
+body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
+  background:radial-gradient(ellipse at center,transparent 42%,rgba(255,40,52,.5) 100%)}
+@keyframes dmgflash{0%{opacity:0}10%{opacity:1}100%{opacity:0}}
+
+@media (max-width:780px){
+  #statusWidget{left:10px;bottom:auto;top:92px;width:142px;padding:6px 9px}
 }

@@ -25,6 +25,8 @@ export class Hud {
       near: $("nearVal"), nearDist: $("nearDist"),
       marker: $("targetMarker"), markerName: $("targetMarkerName"), markerDist: $("targetMarkerDist"),
       arrow: $("targetArrow"), arrowDist: $("targetArrowDist"), minimap: $("minimap"),
+      hull: $("hullFill"), shield: $("shieldFill"), statusWrap: $("statusWidget"),
+      lockRing: $("lockRing"),
     };
     this.mm = this.el.minimap.getContext("2d");
     this._v = new THREE.Vector3();
@@ -39,7 +41,16 @@ export class Hud {
     this.el.mpCount.textContent = `${num}/${total}`;
     this.setProgress(0);
   }
-  setProgress(p) { this.el.mpProg.style.width = Math.max(0, Math.min(1, p)) * 100 + "%"; }
+  setProgress(p) {
+    p = Math.max(0, Math.min(1, p));
+    this.el.mpProg.style.width = p * 100 + "%";
+    if (this.el.lockRing) {                       // anneau de verrouillage autour du réticule
+      const C = 188.5;                            // 2π·30
+      this.el.lockRing.style.strokeDashoffset = (C * (1 - p)).toFixed(1);
+      this.el.lockRing.classList.toggle("active", p > 0.001);
+      this.el.lockRing.classList.toggle("full", p >= 1);
+    }
+  }
   setDistance(altU) { this.el.mpDist.textContent = altU == null ? "" : "Cible : " + fmtKm(altU * KM); }
   setCredits(c) { this.el.credits.textContent = c; }
 
@@ -58,9 +69,18 @@ export class Hud {
       : mode === "boost" ? "linear-gradient(90deg,#ff8a3c,#ffc24d)" : "linear-gradient(90deg,#2b8fc6,#62d8ff)";
   }
 
-  showPrompt(html) {
+  showPrompt(html, warn) {
     if (!html) { this.el.prompt.classList.add("hidden"); return; }
-    this.el.prompt.innerHTML = html; this.el.prompt.classList.remove("hidden");
+    this.el.prompt.innerHTML = html;
+    this.el.prompt.classList.toggle("warn", !!warn);
+    this.el.prompt.classList.remove("hidden");
+  }
+
+  // intégrité coque / bouclier (0..1)
+  setStatus(hull, shield) {
+    if (this.el.hull) this.el.hull.style.width = Math.max(0, Math.min(1, hull)) * 100 + "%";
+    if (this.el.shield) this.el.shield.style.width = Math.max(0, Math.min(1, shield)) * 100 + "%";
+    if (this.el.statusWrap) this.el.statusWrap.classList.toggle("critical", hull < 0.34);
   }
 
   toast(msg, type = "ok") {

@@ -93,9 +93,28 @@ ARIA décode chaque fragment et le récit avance.
 | **II — Tension** | Vénus · Mercure · Jupiter · Saturne | Une voix humaine, une éruption solaire, une télémétrie impossible… et un **twist** : ARIA reconstitue-t-elle les fragments, ou les invente-t-elle ? |
 | **III — Apothéose** | Uranus · Neptune · Pluton | Liaison perdue avec la Terre, l'origine d'ARIA révélée, et la **source** du signal au bord du Système Solaire. |
 
-À Pluton, les neuf fragments **se recomposent** en un message — et la cinématique finale
-boucle l'histoire. Toute l'écriture (dialogues, intro, final) vit dans `src/story.js` :
-éditez ce fichier, et vous réécrivez le film.
+À Pluton, les neuf fragments **se recomposent** — et l'on découvre que le signal forme une
+**boucle causale** : le message qu'on recompose est celui qui a lancé la mission. Le **choix
+fait à Saturne** (faire confiance à ARIA, ou douter) détermine **laquelle des deux fins** se
+joue. Toute l'écriture vit dans `src/story.js` : éditez-le, et vous réécrivez le film.
+
+### Activités & dangers (le gameplay)
+
+Fini le « maintien E » : chaque mission a sa **mécanique**, et des **dangers** entament la
+**coque/bouclier** (sans game-over : si la coque tombe, le vaisseau se replie et repart).
+
+| Mécanique | En quoi ça consiste | Exemples |
+|---|---|---|
+| **Verrouillage** | Approchez la source du signal et **orientez le nez** dessus pour remplir l'anneau de verrouillage | Terre, Vénus, Mercure, Jupiter, Uranus, Neptune, Pluton |
+| **Collecte d'éclats** | Volez **à travers** des éclats de données dispersés pour les capter | Mars (glace), Saturne (anneaux) |
+| **Appontage** | Posez-vous **en douceur** (vitesse + altitude faibles) | Lune |
+
+| Danger | Effet |
+|---|---|
+| 🔥 **Éruption solaire** (Mercure) | Abritez-vous **derrière la planète** ou la coque fond |
+| ♨️ **Surchauffe** (Vénus) | Ne **descendez pas trop bas** dans l'atmosphère |
+| ☢️ **Radiations** (Jupiter) | Le **bouclier s'use** : faites vite |
+| 🌪️ **Tempête** (Neptune) | Des **bourrasques** déstabilisent votre visée |
 
 ## 🗂️ Structure
 
@@ -109,10 +128,12 @@ src/
   bodies.js         Soleil, planètes, Lune, anneaux, atmosphères, étoiles
   ship.js           vaisseau (modèle + physique de vol + caméra 3ᵉ personne)
   input.js          clavier / souris / tactile / manette
-  missions.js       campagne : mécanique des objectifs + déclenchement du récit
-  story.js          ★ toute la matière narrative (intro, dialogues, fragments, final)
+  missions.js       campagne : enchaîne les missions, le récit et les activités
+  activities.js     ★ gameplay : verrouillage (visée) / collecte d'éclats / appontage + dangers
+  status.js         intégrité coque + bouclier (dangers, repli « fail-soft »)
+  story.js          ★ toute la matière narrative (intro, dialogues, fragments, fins)
   comms.js          système de dialogues radio (machine à écrire, locuteurs, file)
-  hud.js            HUD, marqueurs de cible, mini-carte radar
+  hud.js            HUD, marqueurs de cible, mini-carte radar, jauges
   strings.js        tous les textes d'interface (FR) — externalisés
 assets/textures/    cartes planétaires réelles
 vendor/three/       Three.js r160 (vendorisé, sans CDN)

@@ -60,6 +60,7 @@
 
   <svg id="reticle" viewBox="-50 -50 100 100" aria-hidden="true">
     <circle cx="0" cy="0" r="20" /><circle cx="0" cy="0" r="2.5" class="dot" />
+    <circle id="lockRing" class="lockring" cx="0" cy="0" r="30" />
     <path d="M -40 0 L -16 0 M 40 0 L 16 0 M 0 -40 L 0 -16 M 0 40 L 0 16" />
   </svg>
 
@@ -89,6 +90,12 @@
     </div>
     <div id="gauge"><div id="gaugeFill"></div><div class="gauge-ticks"></div></div>
     <div class="tele-near"><span class="tele-label" data-str="nearTag">CORPS PROCHE</span><span id="nearVal">—</span><span id="nearDist"></span></div>
+  </div>
+
+  <!-- intégrité : coque + bouclier -->
+  <div id="statusWidget">
+    <div class="st-row"><span class="st-label">COQUE</span><div class="st-bar"><div id="hullFill" class="st-fill hull"></div></div></div>
+    <div class="st-row"><span class="st-label">BOUCLIER</span><div class="st-bar"><div id="shieldFill" class="st-fill shield"></div></div></div>
   </div>
 
   <div id="prompt" class="hidden"></div>

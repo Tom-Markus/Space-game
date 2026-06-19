@@ -100,6 +100,41 @@ export class SFX {
     }
   }
 
+  // ---- collecte d'un éclat de données (petit éclat cristallin montant) ----
+  pickup() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator(); osc.type = "triangle";
+    osc.frequency.setValueAtTime(880, t); osc.frequency.exponentialRampToValueAtTime(1760, t + 0.09);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.14, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    osc.connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.17);
+  }
+
+  // ---- verrouillage acquis (bip de confirmation montant) ----
+  lock() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 2; i++) {
+      const osc = this.ctx.createOscillator(); osc.type = "sine"; osc.frequency.value = 740 + i * 360;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + i * 0.06); g.gain.exponentialRampToValueAtTime(0.12, t + i * 0.06 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.06 + 0.12);
+      osc.connect(g).connect(this.master); osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.13);
+    }
+  }
+
+  // ---- alarme de coque critique (descente grave urgente) ----
+  damage() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, t); osc.frequency.exponentialRampToValueAtTime(70, t + 0.5);
+    const flt = this.ctx.createBiquadFilter(); flt.type = "lowpass"; flt.frequency.value = 700;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    osc.connect(flt).connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.57);
+  }
+
   missionComplete() { this._arp([523.25, 659.25, 783.99, 1046.5]); }       // objectif accompli
   missionNext() { this._arp([392.0, 523.25], 0.14, 0.16); }                // nouvel objectif assigné
   win() { this._arp([523.25, 659.25, 783.99, 1046.5, 1318.5], 0.2, 0.18); } // victoire finale

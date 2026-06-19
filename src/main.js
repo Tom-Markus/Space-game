@@ -9,6 +9,7 @@ import { Input } from "./input.js";
 import { Music } from "./music.js";
 import { SFX } from "./sfx.js";
 import { Comms, typeInto } from "./comms.js";
+import { Status } from "./status.js";
 import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, SPEAKERS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
@@ -22,6 +23,7 @@ const hud = new Hud();
 const input = new Input(canvas);
 const music = new Music();
 const sfx = new SFX();
+const status = new Status();
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
 
 // ---- comms : dialogues radio scénarisés (ARIA, Korolev, le Signal) ----
@@ -37,7 +39,7 @@ const seenAmbient = new Set();
 
 // Effets scénarisés déclenchés par les répliques (fx) : flash d'éruption,
 // alerte solaire, parasites de liaison perdue.
-let _fxTimer = null, _signalTimer = null;
+let _fxTimer = null, _signalTimer = null, _damageTimer = null;
 function onFx(fx) {
   if (fx === "flare") {
     sfx.alert && sfx.alert();
@@ -54,6 +56,10 @@ function onFx(fx) {
     document.body.classList.add("signalfx");
     clearTimeout(_signalTimer);
     _signalTimer = setTimeout(() => document.body.classList.remove("signalfx"), 1100);
+  } else if (fx === "damage") {
+    document.body.classList.add("damagefx");
+    clearTimeout(_damageTimer);
+    _damageTimer = setTimeout(() => document.body.classList.remove("damagefx"), 650);
   }
 }
 
@@ -148,7 +154,8 @@ function newGame() {
   stats.dist = 0; stats.start = performance.now();
   comms.clear(); seenAmbient.clear();
   trustAria = true; choiceMade = false;
-  missions = new Missions(system, hud, onWin, sfx, comms, onChoice);
+  status.reset();
+  missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx });
 }
 
 function startGame() {
@@ -406,6 +413,7 @@ function frame(now) {
       acc -= STEP;
     }
     comms.update(dt);
+    status.update(dt);                                                     // régénération du bouclier
     // réplique d'ambiance à la première approche d'un astre hors-mission
     if (lastNav.key && AMBIENT[lastNav.key] && !seenAmbient.has(lastNav.key) && !comms.busy) {
       const ab = system.bodies.get(lastNav.key);
