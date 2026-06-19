@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="theme-color" content="#05070f" />
-<title>ODYSSÉE SOLAIRE — Explorateur du Système Solaire</title>
+<title>ODYSSÉE SOLAIRE — Le Dernier Signal</title>
 <link rel="icon" href="./assets/textures/sun.jpg" />
 <link rel="stylesheet" href="./styles.css" />
 <script type="importmap">
@@ -21,6 +21,8 @@
 
 <!-- effet de distorsion -->
 <div id="warpfx"></div>
+<!-- calque d'effets scénarisés : éruption solaire, parasites de liaison -->
+<div id="fxflash"></div>
 
 <!-- ======================= LOADING ======================= -->
 <div id="loading" class="overlay">
@@ -92,6 +94,12 @@
   <div id="prompt" class="hidden"></div>
   <div id="toast"></div>
 
+  <!-- comms : dialogues radio (ARIA / Korolev / le Signal) -->
+  <div id="comms" class="hidden">
+    <span id="commsWho" class="comms-who"></span>
+    <span id="commsText" class="comms-text"></span>
+  </div>
+
   <!-- radar -->
   <div id="radar">
     <canvas id="minimap" width="240" height="240"></canvas>
@@ -102,6 +110,19 @@
   <button id="musicBtn" type="button" aria-label="Couper le son" title="Son ♪ (touche C)">♪</button>
 
   <div id="help" class="hud-panel hidden"></div>
+</div>
+
+<!-- ======================= CINÉMATIQUE (intro / final) ======================= -->
+<div id="cinema" class="overlay hidden">
+  <div class="cinema-box">
+    <div class="cinema-tag">◈ TRANSMISSION ENTRANTE</div>
+    <div id="cinemaLog" class="cinema-log"></div>
+    <div class="cinema-actions">
+      <button id="cinemaSkip" class="btn cinema-skip">PASSER ▸</button>
+      <button id="cinemaCta" class="btn primary hidden">DÉCOLLER ▸</button>
+    </div>
+    <p class="cinema-hint">Cliquez ou appuyez sur Espace pour avancer</p>
+  </div>
 </div>
 
 <!-- ======================= PAUSE ======================= -->
@@ -116,8 +137,13 @@
 <!-- ======================= WIN ======================= -->
 <div id="win" class="overlay hidden">
   <div class="panel wide">
-    <h1 class="logo" data-str="winTitle">MISSION ACCOMPLIE</h1>
+    <h1 class="logo" data-str="winTitle">SIGNAL RECOMPOSÉ</h1>
     <p class="subtitle" data-str="winSub"></p>
+    <div class="win-message">
+      <span class="win-message-tag" data-str="winMessageTag">MESSAGE RECOMPOSÉ</span>
+      <p id="winMessage" class="win-message-text"></p>
+      <div id="winFragments" class="win-fragments"></div>
+    </div>
     <div id="winStats" class="winstats"></div>
     <button id="restartBtn" class="btn primary" data-str="restartBtn">NOUVELLE EXPÉDITION</button>
   </div>

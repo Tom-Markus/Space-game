@@ -103,4 +103,48 @@ export class SFX {
   missionComplete() { this._arp([523.25, 659.25, 783.99, 1046.5]); }       // objectif accompli
   missionNext() { this._arp([392.0, 523.25], 0.14, 0.16); }                // nouvel objectif assigné
   win() { this._arp([523.25, 659.25, 783.99, 1046.5, 1318.5], 0.2, 0.18); } // victoire finale
+
+  // ---- bip radio à l'arrivée d'une réplique (timbre selon le locuteur) ----
+  comm(who) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const base = who === "control" ? 660 : who === "sys" ? 440 : 770;     // ARIA plus aigu
+    const osc = this.ctx.createOscillator(); osc.type = "sine"; osc.frequency.value = base;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+    osc.connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.12);
+  }
+
+  // ---- voix du Signal : double bip détuné et filtré, inquiétant ----
+  signal() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (const [f, d] of [[220, 0], [233, 0.02]]) {                       // léger battement
+      const osc = this.ctx.createOscillator(); osc.type = "sawtooth"; osc.frequency.value = f;
+      const flt = this.ctx.createBiquadFilter(); flt.type = "lowpass"; flt.frequency.value = 820;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.085, t + d + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.5);
+      osc.connect(flt).connect(g).connect(this.master); osc.start(t + d); osc.stop(t + d + 0.52);
+    }
+  }
+
+  // ---- alarme (éruption solaire) : klaxon descendant répété ----
+  alert() {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    for (let k = 0; k < 3; k++) {
+      const t = t0 + k * 0.34;
+      const osc = this.ctx.createOscillator(); osc.type = "square";
+      osc.frequency.setValueAtTime(720, t); osc.frequency.linearRampToValueAtTime(520, t + 0.26);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.15, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      osc.connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.32);
+    }
+  }
 }

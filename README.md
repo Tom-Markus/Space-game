@@ -1,8 +1,17 @@
-# 🚀 Odyssée Solaire
+# 🚀 Odyssée Solaire — *Le Dernier Signal*
 
-Un jeu **3D du Système Solaire** jouable dans le navigateur. Pilotez un vaisseau spatial
-à la **3ᵉ personne** à travers les huit planètes (plus la Lune et Pluton) et accomplissez
-une **mission scientifique** sur chaque astre.
+Un jeu **3D du Système Solaire** jouable dans le navigateur, doublé d'une **campagne narrative
+en trois actes**. Pilotez l'**Odyssée** à la **3ᵉ personne** à travers les huit planètes (plus la
+Lune et Pluton), épaulé·e par **ARIA**, votre intelligence de bord, et par le **Centre Korolev**.
+
+> Il y a quarante ans, la sonde **Pionnier-9** a franchi l'orbite de Pluton, puis s'est tue.
+> Cette nuit, son signal est revenu — et il connaît le nom de votre vaisseau. Le message est
+> **éparpillé** : un fragment piégé dans le champ de chaque monde. Récupérez-les tous,
+> recomposez le message, et découvrez qui appelle… avant que le silence ne retombe.
+
+L'histoire se raconte **pendant que vous pilotez**, par radio : briefings, répliques d'arrivée,
+**éruption solaire** à Mercure, **twist** dans les anneaux de Saturne, **silence radio** passé
+Neptune, et un **final** à la frontière du système. *Émerveillement → tension → apothéose.*
 
 Rendu avec [Three.js](https://threejs.org) (WebGL) et de **vraies cartes de textures
 planétaires** (NASA / Planet Pixel Emporium) pour un maximum de réalisme : éclairage
@@ -71,12 +80,22 @@ d'un astre — c'est ainsi qu'on franchit les distances réelles. Manette et tac
 
 Manette (Gamepad) et commandes **tactiles** (joystick + boutons) sont également prises en charge.
 
-## 🎯 But du jeu
+## 🎯 But du jeu — la campagne « Le Dernier Signal »
 
-Une campagne enchaîne une mission par corps céleste — calibration en orbite terrestre,
-alunissage, prélèvements sur Mars, traversée des anneaux de Saturne, jusqu'à la frontière
-de Pluton. Suivez le marqueur d'objectif, approchez la cible et maintenez **E** pour
-réaliser l'analyse. Gagnez des crédits et terminez l'expédition complète.
+Dix chapitres, un par astre, chacun porteur d'un **fragment du signal** à récupérer.
+Suivez le marqueur d'objectif, approchez la cible et maintenez **E** pour analyser /
+sonder / prélever, posez-vous sur la Lune, ou **traversez** les anneaux de Saturne.
+ARIA décode chaque fragment et le récit avance.
+
+| Acte | Astres | Ce qui se joue |
+|---|---|---|
+| **I — Émerveillement** | Terre · Lune · Mars | Le signal connaît le nom du vaisseau. Premiers fragments, premiers frissons. |
+| **II — Tension** | Vénus · Mercure · Jupiter · Saturne | Une voix humaine, une éruption solaire, une télémétrie impossible… et un **twist** : ARIA reconstitue-t-elle les fragments, ou les invente-t-elle ? |
+| **III — Apothéose** | Uranus · Neptune · Pluton | Liaison perdue avec la Terre, l'origine d'ARIA révélée, et la **source** du signal au bord du Système Solaire. |
+
+À Pluton, les neuf fragments **se recomposent** en un message — et la cinématique finale
+boucle l'histoire. Toute l'écriture (dialogues, intro, final) vit dans `src/story.js` :
+éditez ce fichier, et vous réécrivez le film.
 
 ## 🗂️ Structure
 
@@ -90,9 +109,11 @@ src/
   bodies.js         Soleil, planètes, Lune, anneaux, atmosphères, étoiles
   ship.js           vaisseau (modèle + physique de vol + caméra 3ᵉ personne)
   input.js          clavier / souris / tactile / manette
-  missions.js       campagne et objectifs
+  missions.js       campagne : mécanique des objectifs + déclenchement du récit
+  story.js          ★ toute la matière narrative (intro, dialogues, fragments, final)
+  comms.js          système de dialogues radio (machine à écrire, locuteurs, file)
   hud.js            HUD, marqueurs de cible, mini-carte radar
-  strings.js        tous les textes (FR) — externalisés
+  strings.js        tous les textes d'interface (FR) — externalisés
 assets/textures/    cartes planétaires réelles
 vendor/three/       Three.js r160 (vendorisé, sans CDN)
 ```

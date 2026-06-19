@@ -8,6 +8,8 @@ import { StarMap } from "./starmap.js";
 import { Input } from "./input.js";
 import { Music } from "./music.js";
 import { SFX } from "./sfx.js";
+import { Comms, typeInto } from "./comms.js";
+import { INTRO, ENDING, FINAL_MESSAGE, AMBIENT, SPEAKERS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
 
@@ -21,6 +23,34 @@ const input = new Input(canvas);
 const music = new Music();
 const sfx = new SFX();
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+
+// ---- comms : dialogues radio scénarisés (ARIA, Korolev, le Signal) ----
+const comms = new Comms({
+  panel: document.getElementById("comms"),
+  whoEl: document.getElementById("commsWho"),
+  textEl: document.getElementById("commsText"),
+  sfx,
+  onFx,
+});
+const seenAmbient = new Set();
+
+// Effets scénarisés déclenchés par les répliques (fx) : flash d'éruption,
+// alerte solaire, parasites de liaison perdue.
+let _fxTimer = null;
+function onFx(fx) {
+  if (fx === "flare") {
+    sfx.alert && sfx.alert();
+    document.body.classList.add("flare");
+    clearTimeout(_fxTimer);
+    _fxTimer = setTimeout(() => document.body.classList.remove("flare"), 2800);
+  } else if (fx === "flareWarn") {
+    document.body.classList.add("flare-warn");
+    setTimeout(() => document.body.classList.remove("flare-warn"), 1600);
+  } else if (fx === "static") {
+    document.body.classList.add("staticfx");
+    setTimeout(() => document.body.classList.remove("staticfx"), 2400);
+  }
+}
 
 // ---- son : bouton ♪ et touche C (coupent musique + bruitages ensemble) ----
 // La piste continue « en fantôme » pendant la coupure (cf. music.js).
@@ -108,7 +138,8 @@ function placeShipStart() {
 function newGame() {
   placeShipStart();
   stats.dist = 0; stats.start = performance.now();
-  missions = new Missions(system, hud, onWin, sfx);
+  comms.clear(); seenAmbient.clear();
+  missions = new Missions(system, hud, onWin, sfx, comms);
 }
 
 function startGame() {
@@ -148,10 +179,18 @@ function closeMap() {
   if (!isTouch) input.requestLock();
 }
 
-function onWin(credits) {
+function onWin(credits, fragments) {
   state = "win"; input.enabled = false; input.exitLock();
   document.body.classList.remove("warping");
-  sfx.win();
+  comms.clear();
+  // Cinématique finale (message recomposé), puis écran de victoire.
+  runCinematic(ENDING, T("winReportBtn")).then(() => {
+    sfx.win();
+    showWinScreen(credits, fragments || []);
+  });
+}
+
+function showWinScreen(credits, fragments) {
   const time = (performance.now() - stats.start) / 1000;
   const mm = Math.floor(time / 60), ss = Math.round(time % 60).toString().padStart(2, "0");
   const Mkm = (stats.dist * SCALE.unitKm / 1e6).toFixed(1);
@@ -159,11 +198,99 @@ function onWin(credits) {
     `<div class="stat"><b>${mm}:${ss}</b><span>${T("statTime")}</span></div>` +
     `<div class="stat"><b>${credits}</b><span>${T("statCredits")}</span></div>` +
     `<div class="stat"><b>${Mkm}</b><span>${T("statDist")} (M km)</span></div>`;
+  const msg = document.getElementById("winMessage");
+  if (msg) msg.textContent = FINAL_MESSAGE;
+  const frEl = document.getElementById("winFragments");
+  if (frEl) frEl.innerHTML = fragments.map((f) => `<span class="frag">${f}</span>`).join("");
   document.getElementById("win").classList.remove("hidden");
   missions = null;
 }
 
-document.getElementById("startBtn").onclick = startGame;
+// -------------------------------------------------------------------
+//  Cinématique plein écran (intro & final). Joue une liste de répliques
+//  dans le panneau #cinema avec effet machine à écrire. Cliquer / Espace
+//  avance ; « PASSER » saute jusqu'au bouton final. Renvoie une promesse
+//  résolue quand le joueur valide (ou saute).
+// -------------------------------------------------------------------
+function runCinematic(beats, ctaLabel) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("cinema");
+    const log = document.getElementById("cinemaLog");
+    const skip = document.getElementById("cinemaSkip");
+    const cta = document.getElementById("cinemaCta");
+    const ctrl = { cancelled: false, advance: false };
+    let finished = false;
+
+    log.innerHTML = "";
+    cta.classList.add("hidden");
+    skip.classList.remove("hidden");
+    cta.textContent = ctaLabel || "CONTINUER ▸";
+    overlay.classList.remove("hidden");
+
+    const onSkip = (e) => { e && e.stopPropagation(); ctrl.cancelled = true; ctrl.advance = true; };
+    const onAdvance = () => { ctrl.advance = true; };
+    const onKey = (e) => {
+      if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); ctrl.advance = true; }
+      else if (e.code === "Escape") { ctrl.cancelled = true; ctrl.advance = true; }
+    };
+    const finish = () => {
+      if (finished) return; finished = true;
+      overlay.classList.add("hidden");
+      skip.removeEventListener("click", onSkip);
+      cta.removeEventListener("click", finish);
+      overlay.removeEventListener("click", onAdvance);
+      removeEventListener("keydown", onKey, true);
+      resolve();
+    };
+    skip.addEventListener("click", onSkip);
+    cta.addEventListener("click", finish);
+    overlay.addEventListener("click", onAdvance);
+    addEventListener("keydown", onKey, true);
+
+    (async () => {
+      for (const b of beats) {
+        if (ctrl.cancelled) break;
+        const sp = SPEAKERS[b.who] || SPEAKERS.sys;
+        const line = document.createElement("div");
+        line.className = "cine-line " + sp.cls;
+        const who = document.createElement("span"); who.className = "cine-who"; who.textContent = sp.name;
+        const txt = document.createElement("span"); txt.className = "cine-text";
+        line.appendChild(who); line.appendChild(txt); log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+        if (b.fx) onFx(b.fx);
+        if (sfx) { if (b.who === "signal" && sfx.signal) sfx.signal(); else if (sfx.comm) sfx.comm(b.who); }
+        ctrl.advance = false;
+        await typeInto(txt, b.text, 48, ctrl);
+        log.scrollTop = log.scrollHeight;
+        await waitHold(b.text, ctrl);
+      }
+      skip.classList.add("hidden");
+      cta.classList.remove("hidden");
+      cta.focus && cta.focus();
+      if (ctrl.cancelled) { /* le bouton reste, mais Échap/PASSER ferme direct */ }
+    })();
+
+    function waitHold(text, c) {
+      return new Promise((res) => {
+        const dur = Math.min(5200, Math.max(1500, text.length * 46));
+        const t0 = performance.now();
+        const poll = () => {
+          if (c.cancelled || c.advance) return res();
+          if (performance.now() - t0 >= dur) return res();
+          requestAnimationFrame(poll);
+        };
+        poll();
+      });
+    }
+  });
+}
+
+document.getElementById("startBtn").onclick = async () => {
+  music.start(); sfx.start();              // 1er geste utilisateur -> autorise l'audio
+  document.getElementById("start").classList.add("hidden");
+  await runCinematic(INTRO, T("introLaunchBtn"));   // transmission d'ouverture
+  startGame();
+};
 document.getElementById("resumeBtn").onclick = () => { sfx.click(); resumeGame(); };
 document.getElementById("restartBtn").onclick = () => { sfx.click(); newGame(); startGame(); };
 document.getElementById("helpBtn").onclick = () => { sfx.click(); document.getElementById("help").classList.toggle("hidden"); };
@@ -192,6 +319,15 @@ function frame(now) {
       missions.update(STEP, ship, input);
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
+    }
+    comms.update(dt);
+    // réplique d'ambiance à la première approche d'un astre hors-mission
+    if (lastNav.key && AMBIENT[lastNav.key] && !seenAmbient.has(lastNav.key) && !comms.busy) {
+      const ab = system.bodies.get(lastNav.key);
+      if (ab && lastNav.dist < Math.max(ab.radius * 1.2, 4000)) {
+        seenAmbient.add(lastNav.key);
+        comms.playSequence(AMBIENT[lastNav.key]);
+      }
     }
     system.update(dt, camera);
     ship.updateCamera(dt, camera);

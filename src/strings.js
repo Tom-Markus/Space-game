@@ -2,9 +2,12 @@
 export const STRINGS = {
   fr: {
     loadingSub: "Initialisation des systèmes de navigation…",
-    tagline: "Pilotez votre vaisseau à la 3ᵉ personne dans un Système Solaire à l'échelle réelle et accomplissez une mission sur chaque astre. La vitesse de distorsion franchit les distances immenses.",
+    tagline: "Un signal impossible répond depuis les confins du Système Solaire — et il connaît votre nom. Pilotez l'Odyssée, récupérez le message éparpillé sur chaque monde, et découvrez qui appelle avant que le silence ne retombe.",
     startBtn: "DÉCOLLAGE",
-    startHint: "La souris pilote, l'horizon se stabilise tout seul. Maintenez Espace pour la distorsion — elle ralentit automatiquement près des astres.",
+    startHint: "La souris pilote, l'horizon se stabilise tout seul. Maintenez Espace pour la distorsion — elle ralentit automatiquement près des astres. ARIA, votre intelligence de bord, vous guidera.",
+    introLaunchBtn: "DÉCOLLER ▸",
+    winReportBtn: "VOIR LE RAPPORT ▸",
+    winMessageTag: "MESSAGE RECOMPOSÉ",
     qualityTag: "QUALITÉ DES TEXTURES",
     qualityHints: {
       ultra: "8192 px — netteté maximale (~2 Go de VRAM, chargement plus long). Idéal sur PC.",
@@ -20,8 +23,8 @@ export const STRINGS = {
     pauseTitle: "PAUSE",
     resumeBtn: "REPRENDRE",
     helpBtn: "COMMANDES",
-    winTitle: "MISSION ACCOMPLIE",
-    winSub: "Vous avez exploré l'intégralité du Système Solaire. L'humanité vous salue, commandant.",
+    winTitle: "SIGNAL RECOMPOSÉ",
+    winSub: "Quarante ans de silence, enfin rompus. Le message de Pionnier a été rendu à la Terre — et la porte des étoiles vient de se rouvrir. Bravo, Commandant.",
     restartBtn: "NOUVELLE EXPÉDITION",
     promptHold: (verb, name) => `Maintenez <b>E</b> pour ${verb} ${name}`,
     promptScanning: (pct) => `Analyse en cours… ${pct}%`,

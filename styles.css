@@ -263,3 +263,90 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   #help{display:none !important}
   .corner{display:none}
 }
+
+/* ===================================================================
+   LE DERNIER SIGNAL — comms radio, cinématiques, effets scénarisés
+   =================================================================== */
+
+/* ---------- comms : sous-titres radio (bas-centre, au-dessus de la télémétrie) ---------- */
+#comms{position:fixed;left:50%;bottom:98px;transform:translate(-50%,8px);z-index:21;pointer-events:none;
+  max-width:min(680px,86vw);width:max-content;padding:11px 20px 12px;
+  background:linear-gradient(165deg,rgba(10,20,40,.84),rgba(6,12,26,.76));
+  border:1px solid var(--brd);border-left:2px solid var(--brd-hi);border-radius:13px;backdrop-filter:blur(9px);
+  box-shadow:0 8px 34px rgba(0,8,24,.6),inset 0 1px 0 rgba(150,200,255,.12);
+  opacity:0;transition:opacity .3s ease,transform .3s ease}
+#comms.show{opacity:1;transform:translate(-50%,0)}
+#comms::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--brd-hi),transparent);opacity:.7}
+#comms[data-who="control"]{border-left-color:var(--amber)}
+#comms[data-who="signal"]{border-left-color:var(--accent-2);box-shadow:0 8px 34px rgba(40,8,60,.55),inset 0 1px 0 rgba(180,160,255,.14)}
+#comms[data-who="sys"]{border-left-color:#5d7596}
+.comms-who{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;font-weight:800;
+  margin-bottom:4px;color:var(--accent);text-shadow:0 0 10px rgba(98,216,255,.45)}
+.comms-who.control{color:var(--amber);text-shadow:0 0 10px rgba(255,194,77,.4)}
+.comms-who.signal{color:var(--accent-2);text-shadow:0 0 12px rgba(155,140,255,.6)}
+.comms-who.sys{color:#93acce;text-shadow:none}
+.comms-text{display:block;font-size:14.5px;line-height:1.5;color:#eaf3ff;min-height:1.4em}
+#comms[data-who="signal"] .comms-text{color:#d6ccff;font-style:italic}
+#comms[data-who="sys"] .comms-text{font-family:var(--mono);font-size:13px;color:#86d9ff;letter-spacing:.03em}
+
+/* ---------- cinématique plein écran (intro / final) ---------- */
+#cinema{z-index:45;background:radial-gradient(ellipse at center,rgba(6,12,28,.92),rgba(1,2,6,.985));backdrop-filter:blur(6px)}
+.cinema-box{position:relative;width:min(760px,92vw);max-height:88vh;display:flex;flex-direction:column;gap:14px;
+  padding:24px 30px;border:1px solid var(--brd);border-radius:16px;
+  background:linear-gradient(180deg,rgba(10,20,40,.5),rgba(4,9,20,.5));
+  box-shadow:0 0 80px rgba(40,120,210,.22),inset 0 0 50px rgba(40,120,210,.05)}
+.cinema-box::before,.cinema-box::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--accent-2);opacity:.6}
+.cinema-box::before{top:9px;left:9px;border-right:0;border-bottom:0}
+.cinema-box::after{bottom:9px;right:9px;border-left:0;border-top:0}
+.cinema-tag{font-family:var(--mono);font-size:11px;letter-spacing:.28em;color:var(--accent-2);
+  text-align:center;text-shadow:0 0 14px rgba(155,140,255,.5);animation:cinetag 2.2s ease-in-out infinite}
+@keyframes cinetag{50%{opacity:.5}}
+.cinema-log{display:flex;flex-direction:column;gap:13px;overflow-y:auto;padding:6px 6px;min-height:38vh;max-height:60vh}
+.cine-line{font-size:16px;line-height:1.55;text-align:left;opacity:0;animation:cineIn .4s ease forwards}
+@keyframes cineIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cine-who{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;font-weight:800;
+  margin-right:10px;color:var(--accent)}
+.cine-text{color:#dfeaff}
+.cine-line.control .cine-who{color:var(--amber)}
+.cine-line.signal .cine-who{color:var(--accent-2)}
+.cine-line.signal .cine-text{color:#cfc4ff;font-style:italic;text-shadow:0 0 14px rgba(155,140,255,.3)}
+.cine-line.sys .cine-who{color:#7d96bb}
+.cine-line.sys .cine-text{font-family:var(--mono);font-size:13.5px;color:#86d9ff;letter-spacing:.04em}
+.cinema-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.cinema-skip{opacity:.7;font-size:13px;padding:9px 20px}
+.cinema-skip:hover{opacity:1}
+.cinema-hint{text-align:center;color:#6f86ac;font-size:11px;margin:0}
+
+/* ---------- message recomposé sur l'écran de victoire ---------- */
+.win-message{margin:4px auto 16px;max-width:520px;padding:16px 20px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(40,28,72,.4),rgba(18,14,40,.4));
+  border:1px solid rgba(155,140,255,.35);box-shadow:inset 0 0 30px rgba(110,90,220,.1)}
+.win-message-tag{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--accent-2);margin-bottom:8px}
+.win-message-text{font-size:15px;line-height:1.6;color:#e7ddff;font-style:italic;white-space:pre-line;margin:0}
+.win-fragments{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px}
+.win-fragments .frag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#bfeaff;
+  background:rgba(98,216,255,.1);border:1px solid var(--brd);border-radius:6px;padding:3px 9px}
+
+/* ---------- effets scénarisés : éruption solaire, parasites ---------- */
+#fxflash{position:fixed;inset:0;z-index:19;pointer-events:none;opacity:0;mix-blend-mode:screen}
+body.flare-warn #fxflash{opacity:1;animation:warnpulse .8s ease-in-out 2;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(255,180,60,.20) 100%)}
+body.flare #fxflash{opacity:1;
+  background:radial-gradient(ellipse at center,rgba(255,240,210,.12) 0%,transparent 45%),
+             radial-gradient(ellipse at center,transparent 50%,rgba(255,120,40,.32) 100%);
+  animation:flarehit 2.8s ease-out 1}
+body.staticfx #fxflash{opacity:.7;animation:staticflick .1s steps(2) infinite;
+  background:repeating-linear-gradient(0deg,rgba(120,160,210,.06) 0 2px,transparent 2px 4px)}
+@keyframes warnpulse{0%,100%{opacity:.2}50%{opacity:.95}}
+@keyframes flarehit{0%{opacity:0}7%{opacity:1;filter:brightness(2.2)}30%{opacity:.85}100%{opacity:0}}
+@keyframes staticflick{0%{opacity:.45}100%{opacity:.8}}
+
+@media (max-width:780px){
+  #comms{bottom:108px;max-width:76vw;padding:8px 14px 9px}
+  .comms-text{font-size:13px}
+  .comms-who{font-size:9.5px}
+  .cine-line{font-size:14.5px}
+  .cinema-box{padding:18px 18px}
+  .cinema-log{min-height:42vh}
+}
