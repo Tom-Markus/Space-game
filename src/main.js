@@ -22,22 +22,25 @@ const music = new Music();
 const sfx = new SFX();
 const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
 
-// ---- bouton son (couper / remettre musique + bruitages — la piste continue « en fantôme ») ----
-(function setupMusic() {
-  const btn = document.getElementById("musicBtn");
-  if (!btn) return;
-  const refresh = () => {
-    btn.classList.toggle("muted", music.muted);
-    btn.setAttribute("aria-label", music.muted ? "Remettre le son" : "Couper le son");
-  };
-  refresh();
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    music.toggleMute();
-    sfx.setMuted(music.muted);
-    refresh();
-  });
-})();
+// ---- son : bouton ♪ et touche C (coupent musique + bruitages ensemble) ----
+// La piste continue « en fantôme » pendant la coupure (cf. music.js).
+const musicBtn = document.getElementById("musicBtn");
+function refreshMusicBtn() {
+  if (!musicBtn) return;
+  musicBtn.classList.toggle("muted", music.muted);
+  musicBtn.setAttribute("aria-label", music.muted ? "Remettre le son" : "Couper le son");
+}
+function toggleSound() {
+  music.toggleMute();
+  sfx.setMuted(music.muted);
+  refreshMusicBtn();
+}
+refreshMusicBtn();
+musicBtn && musicBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleSound(); });
+addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (e.code === "KeyC" || (e.key || "").toLowerCase() === "c") toggleSound();
+});
 
 let system, ship, missions, starmap;
 let navTarget = null;                    // cap choisi par le joueur via la carte
@@ -121,7 +124,7 @@ function startGame() {
 
 function pauseGame() {
   if (state !== "playing") return;
-  state = "paused"; input.enabled = false;
+  state = "paused"; input.enabled = false; input.exitLock();
   document.body.classList.remove("warping");
   document.getElementById("pause").classList.remove("hidden");
 }
@@ -202,7 +205,6 @@ function frame(now) {
       else if (mode === "boost") sfx.boostOn();
       prevMode = mode;
     }
-    sfx.updateEngine(ship.throttleVis, mode);
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
     document.body.classList.toggle("warping", ship.warping && ship.warpAmount > 0.25);
     const nb = lastNav.key && system.bodies.get(lastNav.key);
@@ -219,7 +221,6 @@ function frame(now) {
   } else if (system) {
     system.update(dt * 0.4, camera);
     if (ship) ship.updateCamera(dt, camera);
-    sfx.updateEngine(0, "cruise");
   }
 
   if (system && system.sky) system.sky.position.copy(camera.position);   // fond stellaire à l'infini

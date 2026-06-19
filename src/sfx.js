@@ -1,8 +1,8 @@
 // ===================================================================
 //  Bruitages du jeu, synthétisés en direct via Web Audio API (aucun
-//  fichier requis) : ronronnement des réacteurs, post-combustion,
-//  distorsion, impacts, interface et missions. Suit le même état
-//  « muet » que la musique (bouton ♪).
+//  fichier requis) : post-combustion, distorsion, impacts, interface
+//  et missions. Suit le même état « muet » que la musique (bouton ♪
+//  / touche C).
 // ===================================================================
 export class SFX {
   constructor() {
@@ -10,7 +10,6 @@ export class SFX {
     this.master = null;
     this.muted = false;
     try { this.muted = localStorage.getItem("musicMuted") === "1"; } catch (e) {}
-    this._engine = null;
     this._lastImpact = 0;
   }
 
@@ -22,7 +21,6 @@ export class SFX {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 0.7;
     this.master.connect(this.ctx.destination);
-    this._buildEngine();
   }
 
   setMuted(m) {
@@ -36,31 +34,6 @@ export class SFX {
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return buf;
-  }
-
-  // ---- ronronnement continu des réacteurs : oscillateur grave + souffle filtré ----
-  _buildEngine() {
-    const ctx = this.ctx;
-    const osc = ctx.createOscillator(); osc.type = "sawtooth"; osc.frequency.value = 55;
-    const oscGain = ctx.createGain(); oscGain.gain.value = 0;
-    const noise = ctx.createBufferSource(); noise.buffer = this._noiseBuffer(2); noise.loop = true;
-    const noiseFilter = ctx.createBiquadFilter(); noiseFilter.type = "lowpass"; noiseFilter.frequency.value = 300;
-    const noiseGain = ctx.createGain(); noiseGain.gain.value = 0;
-    osc.connect(oscGain).connect(this.master);
-    noise.connect(noiseFilter).connect(noiseGain).connect(this.master);
-    osc.start(); noise.start();
-    this._engine = { osc, oscGain, noiseFilter, noiseGain };
-  }
-
-  // thr: régime moteur visible (0..1) ; mode: "cruise" | "boost" | "warp".
-  updateEngine(thr, mode) {
-    if (!this._engine) return;
-    const e = this._engine, t = this.ctx.currentTime, k = 0.08;
-    const baseFreq = mode === "warp" ? 140 : mode === "boost" ? 95 : 55;
-    e.osc.frequency.setTargetAtTime(baseFreq + thr * 40, t, k);
-    e.oscGain.gain.setTargetAtTime(0.04 + thr * 0.08, t, k);
-    e.noiseFilter.frequency.setTargetAtTime(280 + thr * (mode === "warp" ? 2600 : 900), t, k);
-    e.noiseGain.gain.setTargetAtTime(0.012 + thr * (mode === "warp" ? 0.08 : 0.045), t, k);
   }
 
   // ---- petit clic d'interface ----
