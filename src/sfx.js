@@ -46,17 +46,6 @@ export class SFX {
     osc.connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.09);
   }
 
-  // ---- enclenchement post-combustion : souffle ascendant ----
-  boostOn() {
-    if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(120, t); osc.frequency.exponentialRampToValueAtTime(280, t + 0.25);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.2, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc.connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.32);
-  }
-
   // ---- enclenchement distorsion : montée sifflante ----
   warpOn() {
     if (!this.ctx) return;

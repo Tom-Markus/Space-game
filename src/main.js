@@ -202,7 +202,6 @@ function frame(now) {
     if (mode !== prevMode) {
       if (mode === "warp") sfx.warpOn();
       else if (prevMode === "warp") sfx.warpOff();
-      else if (mode === "boost") sfx.boostOn();
       prevMode = mode;
     }
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
