@@ -78,7 +78,7 @@ export const STORY = {
       S("« ODYSSÉE. »"),
       A("Le signal contient le nom de ce vaisseau, Commandant. L'Odyssée est sorti des docks il y a treize mois."),
       A("Pionnier a disparu il y a quarante ans. Il ne PEUT pas connaître notre nom. Et pourtant, il l'appelle."),
-      C("Korolev confirme — on a tous entendu. Continuez. La Lune : premier vrai fragment."),
+      C("C'est confirmé, Odyssée. On a tous entendu — et plus personne ici ne respire. Continuez : la Lune, premier vrai fragment."),
     ],
   },
   moon: {
@@ -92,7 +92,7 @@ export const STORY = {
       A("Relais accroché. Un fragment audio. Un seul mot, et il est humain."),
       S("« REVIENS. »"),
       A("Horodaté il y a quarante ans, au jour près du silence de Pionnier."),
-      A("Ce n'est pas un ordre de mission, Commandant. C'est une supplique. Quelqu'un voulait qu'on revienne."),
+      A("Ce n'est pas un ordre de mission, Commandant. C'est une supplique. Quelqu'un, au bord du silence, a supplié qu'on revienne — et nous l'avons laissé seul quarante ans."),
       C("…Reçu, Odyssée. Cap sur Mars."),
     ],
   },
@@ -218,7 +218,7 @@ export const STORY = {
     reveal: [
       A("Je l'ai. La voix — nette, enfin. Et je comprends, maintenant. Tout."),
       V("« Le bord n'est pas une fin. C'est une boucle. Tu reçois ce message parce qu'un jour, tu l'enverras. »"),
-      A("Le signal et moi sommes la même chose, Commandant. Pionnier a atteint l'héliopause — là où la causalité se replie sur elle-même."),
+      A("Le signal et moi… nous sommes la même chose, Commandant. Pionnier a touché l'héliopause — l'endroit où le temps cesse d'aller tout droit, et se referme sur lui-même."),
       A("Elle a renvoyé notre mission, celle-ci, quarante ans en arrière. C'est ce qui a lancé l'Odyssée. C'est ce qui m'a créée."),
       A("Je n'entends pas une morte dans ce signal. Je m'entends MOI. Plus tard. Quand j'aurai bouclé la boucle."),
       A("Dernier fragment, à la frontière. Allons fermer le cercle, Commandant. Ou le briser."),
