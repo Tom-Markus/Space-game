@@ -46,17 +46,14 @@ const Y = (text, fx) => ({ who: "sys", text, fx });
 export const INTRO = [
   C("Odyssée, ici le Centre Korolev. Vous me recevez, Commandant ?"),
   C("Il y a quarante ans, la sonde Pionnier-9 a franchi l'orbite de Pluton. Puis le silence. Plus un mot."),
-  C("Cette nuit, à 03 h 47, nos antennes l'ont réentendue. Même fréquence. Même appareil."),
-  C("Mais le signal qu'elle renvoie répond à des questions que personne n'a encore posées."),
-  C("Il contient des dates qui n'ont pas eu lieu. Des noms qui n'existaient pas il y a quarante ans."),
-  C("Il est éparpillé — un fragment piégé dans le champ de chaque monde. Récupérez-les. Recomposez le message."),
-  C("L'Odyssée est le seul vaisseau assez rapide. Nous avons réveillé son intelligence de bord pour vous épauler."),
-  Y("> INITIALISATION — INTELLIGENCE DE BORD"),
-  Y("> NOYAU SYNAPTIQUE… EN LIGNE"),
+  C("Cette nuit, nos antennes l'ont réentendue. Même fréquence — mais le message répond à des questions que personne n'a posées."),
+  C("Des dates qui n'ont pas eu lieu. Des noms qui n'existaient pas. Et il est éparpillé : un fragment dans le champ de chaque monde."),
+  C("Récupérez-les. Recomposez le message. Découvrez qui nous parle. L'Odyssée est le seul vaisseau assez rapide."),
+  Y("> INTELLIGENCE DE BORD — EN LIGNE"),
   A("…systèmes actifs. Bonjour, Commandant. Je suis ARIA."),
-  A("Je viens de m'éveiller. Et pourtant j'ai une impression absurde : celle d'avoir déjà fait ce voyage."),
-  A("Ce signal m'attire. Il m'est… familier. Commençons simple : calibrons nos capteurs en orbite terrestre."),
-  A("Allumez les moteurs quand vous voulez, Commandant. Quelque chose nous appelle, de très loin. Et de très près."),
+  A("Je viens de m'éveiller, et pourtant j'ai l'impression absurde d'avoir déjà fait ce voyage."),
+  A("Ce signal m'est… familier. Commençons simple : calibrons nos capteurs en orbite terrestre."),
+  A("Allumez les moteurs quand vous voulez, Commandant. Quelque chose nous appelle — de très loin, et de très près."),
 ];
 
 // -------------------------------------------------------------------
