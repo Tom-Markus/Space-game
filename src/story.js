@@ -309,6 +309,25 @@ export const ACTIVITIES = {
 //  AMBIENT — répliques d'ARIA à la première approche d'un astre hors-mission
 //  (récompense l'exploration libre). Jouées une seule fois.
 // -------------------------------------------------------------------
+// -------------------------------------------------------------------
+//  BARKS — répliques réactives d'ARIA, jouées dans les silences (jamais
+//  par-dessus un dialogue), avec un temps de recharge. Rendent l'IA vivante.
+// -------------------------------------------------------------------
+export const BARKS = {
+  warp: [
+    A("Distorsion engagée. Accrochez-vous, Commandant."),
+    A("On plie l'espace. Les étoiles détestent ça — pas moi."),
+    A("Vitesse de distorsion. À cette allure, le Système Solaire est tout petit."),
+  ],
+  lowHull: [
+    A("Coque critique, Commandant ! Éloignons-nous du danger."),
+    A("On encaisse trop. Je préférerais rentrer entière, si possible."),
+  ],
+  boost: [
+    A("Postcombustion. J'adore quand vous êtes pressé."),
+  ],
+};
+
 export const AMBIENT = {
   sun:      [ A("N'approchez pas davantage du Soleil, Commandant. J'aime cette coque intacte.") ],
   ceres:    [ A("Cérès. Le plus gros caillou de la ceinture d'astéroïdes. Joli détour — mais le signal nous attend ailleurs.") ],

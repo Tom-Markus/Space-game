@@ -8,11 +8,11 @@
 // ===================================================================
 import { SPEAKERS } from "./story.js";
 
-const CPS = 52;                 // vitesse de frappe (caractères/seconde)
-const READ_MIN = 1.7;           // temps de lecture min après frappe (s)
-const READ_MAX = 5.4;
-const READ_PER_CHAR = 0.045;
-const IDLE_HIDE = 2.4;          // délai avant de masquer le panneau (s)
+const CPS = 56;                 // vitesse de frappe (caractères/seconde)
+const READ_MIN = 1.6;           // temps de lecture min après frappe (s)
+const READ_MAX = 4.8;
+const READ_PER_CHAR = 0.040;
+const IDLE_HIDE = 2.2;          // délai avant de masquer le panneau (s)
 
 export class Comms {
   constructor({ panel, whoEl, textEl, avatarEl, sfx, onFx }) {

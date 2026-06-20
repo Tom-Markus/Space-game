@@ -10,7 +10,7 @@ import { Music } from "./music.js";
 import { SFX } from "./sfx.js";
 import { Comms, typeInto } from "./comms.js";
 import { Status } from "./status.js";
-import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, SPEAKERS } from "./story.js";
+import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, SPEAKERS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
 
@@ -86,6 +86,17 @@ function onFx(fx) {
     clearTimeout(_damageTimer);
     _damageTimer = setTimeout(() => document.body.classList.remove("damagefx"), 650);
   }
+}
+
+// ---- répliques réactives d'ARIA (jamais par-dessus un dialogue, avec recharge) ----
+const _barkT = {};
+function bark(key) {
+  const list = BARKS[key];
+  if (!list || !list.length || state !== "playing" || comms.busy) return;
+  const now = performance.now();
+  if (_barkT[key] && now - _barkT[key] < 22000) return;
+  _barkT[key] = now;
+  comms.say(list[(Math.random() * list.length) | 0]);
 }
 
 // ---- son : bouton ♪ et touche C (coupent musique + bruitages ensemble) ----
@@ -454,10 +465,12 @@ function frame(now) {
 
     const mode = ship.warping ? "warp" : ship.boosting ? "boost" : "cruise";
     if (mode !== prevMode) {
-      if (mode === "warp") sfx.warpOn();
+      if (mode === "warp") { sfx.warpOn(); bark("warp"); }
       else if (prevMode === "warp") sfx.warpOff();
+      if (mode === "boost" && prevMode === "cruise") bark("boost");
       prevMode = mode;
     }
+    if (status.hull < 0.34) bark("lowHull");
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
     document.body.classList.toggle("warping", ship.warping && ship.warpAmount > 0.25);
     const nb = lastNav.key && system.bodies.get(lastNav.key);
