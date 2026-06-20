@@ -78,12 +78,12 @@ export class SFX {
     const noise = this.ctx.createBufferSource(); noise.buffer = this._noiseBuffer(0.25);
     const filter = this.ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 500;
     const g1 = this.ctx.createGain();
-    g1.gain.setValueAtTime(0.45, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    g1.gain.setValueAtTime(0.32, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
     noise.connect(filter).connect(g1).connect(this.master); noise.start(t);
     const osc = this.ctx.createOscillator(); osc.type = "sine";
     osc.frequency.setValueAtTime(90, t); osc.frequency.exponentialRampToValueAtTime(35, t + 0.25);
     const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.38, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    g2.gain.setValueAtTime(0.26, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
     osc.connect(g2).connect(this.master); osc.start(t); osc.stop(t + 0.26);
   }
 
