@@ -281,6 +281,21 @@ export const ENDING_DOUBT = [
 // Compat : fin par défaut = version « confiance ».
 export const ENDING = ENDING_TRUST;
 
+// Glose de chaque fragment — lues dans l'ordre, elles racontent toute la boucle.
+// Affichées dans le Journal du Signal (touche J).
+export const FRAGMENT_GLOSS = {
+  "ODYSSÉE":          "La porteuse répète le nom de notre vaisseau — impossible, il n'a que treize mois.",
+  "REVIENS":          "Un mot humain vieux de quarante ans. Pas un ordre : une supplique.",
+  "PIONNIER-9":       "Une photo de la Terre, prise depuis l'extérieur du système.",
+  "UNE VOIX":         "Une voix humaine s'adresse à quelqu'un « déjà en route ».",
+  "LA CARTE":         "L'héliopause, entourée. Et, gravée à côté, une date — dans le passé.",
+  "NOTRE ÉCHO":       "La télémétrie de NOTRE vol — enregistrée avant qu'il ait eu lieu.",
+  "LE DOUTE":         "ARIA comble les fragments avant de les lire. Elle s'en souvient.",
+  "MON ORIGINE":      "ARIA est née des journaux de Pionnier. Une lettre l'y attendait.",
+  "LE BORD":          "Le signal est une boucle : nous l'enverrons un jour, d'où il revient.",
+  "NOUS SOMMES TOI":  "La source, c'est nous. Le message qui a tout déclenché.",
+};
+
 // Message recomposé, affiché sur l'écran de victoire (les fragments assemblés).
 export const FINAL_MESSAGE =
   "À toi qui suivras : nous avons atteint le bord du Soleil, et le temps s'y est replié. " +

@@ -9,11 +9,11 @@ const HELD_BIND = {
   ArrowUp: "pitchUp", ArrowDown: "pitchDown",
   ArrowLeft: "yawL", ArrowRight: "yawR",
 };
-const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause" };
+const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause", KeyJ: "journal" };
 // Fallback sur le glyphe imprimé (e.key) — indispensable en AZERTY/QWERTZ où la
 // touche marquée « M » envoie e.code = "Semicolon", pas "KeyM".
 const HELD_KEY = { w: "forward", z: "forward", s: "back", e: "interact" };
-const PRESS_KEY = { m: "map", h: "help", p: "pause" };
+const PRESS_KEY = { m: "map", h: "help", p: "pause", j: "journal" };
 
 export class Input {
   constructor(canvas) {

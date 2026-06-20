@@ -10,7 +10,7 @@ import { Music } from "./music.js";
 import { SFX } from "./sfx.js";
 import { Comms, typeInto } from "./comms.js";
 import { Status } from "./status.js";
-import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, SPEAKERS } from "./story.js";
+import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, FRAGMENT_GLOSS, SPEAKERS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY } from "./config.js";
 
@@ -247,6 +247,23 @@ function resolveChoice(trust) {
   if (!isTouch) input.requestLock();
 }
 
+// ---- Journal du Signal (touche J) : relire les fragments décodés ----
+function toggleJournal() {
+  const el = document.getElementById("journal");
+  if (el.classList.contains("hidden")) {
+    document.getElementById("help").classList.add("hidden");
+    const frags = (missions && missions.fragments) || [];
+    const rows = frags.length
+      ? frags.map((f, i) => `<div class="jr-row"><span class="jr-n">${String(i + 1).padStart(2, "0")}</span><div class="jr-c"><b class="jr-f">${f}</b><span class="jr-g">${FRAGMENT_GLOSS[f] || ""}</span></div></div>`).join("")
+      : `<p class="jr-empty">Aucun fragment décodé pour l'instant.<br>Le signal vous attend, Commandant.</p>`;
+    el.innerHTML = `<h3>JOURNAL DU SIGNAL · ${frags.length}/10</h3>${rows}`;
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
+  sfx.click();
+}
+
 function onWin(credits, fragments) {
   state = "win"; input.enabled = false; input.exitLock();
   document.body.classList.remove("warping");
@@ -374,6 +391,7 @@ input.onPress("unlock", () => { if (state === "playing") pauseGame(); });
 input.onPress("pause", () => (state === "playing" ? pauseGame() : state === "paused" ? resumeGame() : null));
 input.onPress("map", () => { sfx.click(); openMap(); });
 input.onPress("help", () => document.getElementById("help").classList.toggle("hidden"));
+input.onPress("journal", () => { if (state === "playing" || state === "paused") toggleJournal(); });
 document.getElementById("radar").addEventListener("click", () => { sfx.click(); openMap(); });
 addEventListener("blur", () => pauseGame());
 
