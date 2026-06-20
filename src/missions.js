@@ -41,6 +41,7 @@ export class Missions {
     this.activeKey = m.key;
     this._arrived = false;
     this._eventDone = false;
+    this.targetReady = false;          // le marqueur de cap n'apparaît qu'après le briefing
     if (this.activity) { this.activity.cleanup(); this.activity = null; }
     const st = STORY[m.key] || {};
     this.hud.setMission(this.completed + 1, this.list.length, m.def.mission.title, st.objective || m.def.mission.desc, m.def.name);
@@ -51,7 +52,10 @@ export class Missions {
       scene: this.scene, system: this.system, key: m.key, body,
       sfx: this.sfx, status: this.status, onFx: this.onFx,
     });
-    if (brief && this.comms && st.brief) this.comms.playSequence(st.brief);
+    // Le marqueur de cap (rectangle orange) n'apparaît qu'une fois le briefing
+    // terminé — ARIA présente d'abord l'astre, ensuite seulement on le pointe.
+    if (brief && this.comms && st.brief) this.comms.playSequence(st.brief, () => { this.targetReady = true; });
+    else this.targetReady = true;
   }
 
   _arrive(st) {

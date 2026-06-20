@@ -92,7 +92,7 @@ function onFx(fx) {
 const _barkT = {};
 function bark(key) {
   const list = BARKS[key];
-  if (!list || !list.length || state !== "playing" || comms.busy) return;
+  if (freeMode || !list || !list.length || state !== "playing" || comms.busy) return;
   const now = performance.now();
   if (_barkT[key] && now - _barkT[key] < 22000) return;
   _barkT[key] = now;
@@ -122,6 +122,7 @@ addEventListener("keydown", (e) => {
 let system, ship, missions, starmap, pionnier;
 let navTarget = null;                    // cap choisi par le joueur via la carte
 let trustAria = true, choiceMade = false; // choix moral de Saturne -> oriente la fin
+let freeMode = false;                     // mode libre : pas d'histoire, juste l'espace
 let state = "loading";
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
@@ -191,7 +192,13 @@ function newGame() {
   comms.clear(); seenAmbient.clear();
   trustAria = true; choiceMade = false;
   status.reset();
-  missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx });
+  if (freeMode) {
+    missions = null;                                   // mode libre : aucune mission, aucune histoire
+    document.body.classList.add("free-mode");
+  } else {
+    document.body.classList.remove("free-mode");
+    missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx });
+  }
 }
 
 function startGame() {
@@ -216,6 +223,15 @@ function resumeGame() {
   document.getElementById("pause").classList.add("hidden");
   input.enabled = true; state = "playing"; last = performance.now();
   if (!isTouch) input.requestLock();
+}
+// Retour au menu d'accueil (permet de changer de mode sans recharger la page).
+function quitToMenu() {
+  state = "start"; input.enabled = false; input.exitLock();
+  document.body.classList.remove("warping");
+  for (const id of ["hud", "pause", "win", "cinema", "choice", "touchUI"]) document.getElementById(id).classList.add("hidden");
+  comms.clear();
+  missions = null;                          // forcera un nouveau départ au prochain lancement
+  document.getElementById("start").classList.remove("hidden");
 }
 
 function openMap() {
@@ -375,12 +391,22 @@ function runCinematic(beats, ctaLabel) {
 }
 
 document.getElementById("startBtn").onclick = async () => {
+  freeMode = false;
   music.start(); sfx.start();              // 1er geste utilisateur -> autorise l'audio
   document.getElementById("start").classList.add("hidden");
   await runCinematic(INTRO, T("introLaunchBtn"));   // transmission d'ouverture
   startGame();
 };
+const _freeBtn = document.getElementById("freeBtn");
+if (_freeBtn) _freeBtn.onclick = () => {
+  freeMode = true;                         // mode libre : pas d'intro, pas d'histoire
+  music.start(); sfx.start();
+  document.getElementById("start").classList.add("hidden");
+  startGame();
+};
 document.getElementById("resumeBtn").onclick = () => { sfx.click(); resumeGame(); };
+const _menuBtn = document.getElementById("menuBtn");
+if (_menuBtn) _menuBtn.onclick = () => { sfx.click(); quitToMenu(); };
 document.getElementById("restartBtn").onclick = () => { sfx.click(); newGame(); startGame(); };
 document.getElementById("helpBtn").onclick = () => { sfx.click(); document.getElementById("help").classList.toggle("hidden"); };
 document.getElementById("choiceTrust").onclick = () => resolveChoice(true);
@@ -462,14 +488,14 @@ function frame(now) {
       lastNav = system.nearestSurface(ship.group.position);
       ship.update(STEP, input, lastNav);
       if (ship.resolveCollision(system.bodies.values())) { sfx.impact(); bark("impact"); }
-      missions.update(STEP, ship, input);
+      if (missions) missions.update(STEP, ship, input);
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
     }
     comms.update(dt);
     status.update(dt);                                                     // régénération du bouclier
-    // réplique d'ambiance à la première approche d'un astre hors-mission
-    if (lastNav.key && AMBIENT[lastNav.key] && !seenAmbient.has(lastNav.key) && !comms.busy) {
+    // réplique d'ambiance à la première approche d'un astre hors-mission (pas en mode libre)
+    if (!freeMode && lastNav.key && AMBIENT[lastNav.key] && !seenAmbient.has(lastNav.key) && !comms.busy) {
       const ab = system.bodies.get(lastNav.key);
       if (ab && lastNav.dist < Math.max(ab.radius * 1.2, 4000)) {
         seenAmbient.add(lastNav.key);
@@ -494,8 +520,10 @@ function frame(now) {
     const nb = lastNav.key && system.bodies.get(lastNav.key);
     hud.setNav(nb ? nb.def.name : null, lastNav.dist);
 
-    // cap manuel (carte) prioritaire, sinon objectif de mission
-    const tk = (navTarget && system.bodies.has(navTarget)) ? navTarget : missions.activeKey;
+    // cap manuel (carte) prioritaire ; sinon objectif de mission, mais seulement
+    // une fois le briefing terminé (le marqueur n'apparaît pas avant qu'ARIA en parle).
+    const tk = (navTarget && system.bodies.has(navTarget)) ? navTarget
+      : (missions && missions.targetReady ? missions.activeKey : null);
     if (tk) {
       const b = system.bodies.get(tk);
       b.getWorldPosition(tmp);
