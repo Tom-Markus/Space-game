@@ -318,10 +318,6 @@ export const ACTIVITIES = {
 };
 
 // -------------------------------------------------------------------
-//  AMBIENT — répliques d'ARIA à la première approche d'un astre hors-mission
-//  (récompense l'exploration libre). Jouées une seule fois.
-// -------------------------------------------------------------------
-// -------------------------------------------------------------------
 //  BARKS — répliques réactives d'ARIA, jouées dans les silences (jamais
 //  par-dessus un dialogue), avec un temps de recharge. Rendent l'IA vivante.
 // -------------------------------------------------------------------
@@ -330,16 +326,28 @@ export const BARKS = {
     A("Distorsion engagée. Accrochez-vous, Commandant."),
     A("On plie l'espace. Les étoiles détestent ça — pas moi."),
     A("Vitesse de distorsion. À cette allure, le Système Solaire est tout petit."),
+    A("On franchit le vide. Curieux : plus on va vite, plus le silence pèse lourd."),
+  ],
+  boost: [
+    A("Postcombustion. J'adore quand vous êtes pressé."),
+    A("Plein gaz. Korolev déteste quand je brûle le carburant comme ça."),
   ],
   lowHull: [
     A("Coque critique, Commandant ! Éloignons-nous du danger."),
     A("On encaisse trop. Je préférerais rentrer entière, si possible."),
+    A("Intégrité au plus bas. Je ne tiens pas à finir en débris — moi non plus."),
   ],
-  boost: [
-    A("Postcombustion. J'adore quand vous êtes pressé."),
+  impact: [
+    A("Aïe. Vous savez qu'on peut CONTOURNER les planètes, Commandant ?"),
+    A("Choc enregistré. La coque vous pardonne. Une fois."),
+    A("…On va dire que c'était volontaire."),
   ],
 };
 
+// -------------------------------------------------------------------
+//  AMBIENT — répliques d'ARIA à la première approche d'un astre hors-mission
+//  (récompense l'exploration libre). Jouées une seule fois.
+// -------------------------------------------------------------------
 export const AMBIENT = {
   sun:      [ A("N'approchez pas davantage du Soleil, Commandant. J'aime cette coque intacte.") ],
   ceres:    [ A("Cérès. Le plus gros caillou de la ceinture d'astéroïdes. Joli détour — mais le signal nous attend ailleurs.") ],

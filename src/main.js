@@ -461,7 +461,7 @@ function frame(now) {
     while (acc >= STEP && guard++ < 5) {
       lastNav = system.nearestSurface(ship.group.position);
       ship.update(STEP, input, lastNav);
-      if (ship.resolveCollision(system.bodies.values())) sfx.impact();
+      if (ship.resolveCollision(system.bodies.values())) { sfx.impact(); bark("impact"); }
       missions.update(STEP, ship, input);
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
