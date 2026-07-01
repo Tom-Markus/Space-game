@@ -2,7 +2,7 @@
 // Cliquer un astre (sur la carte ou dans la liste) définit le « cap » : de retour
 // au pilotage, une flèche du HUD pointe vers lui.
 import * as THREE from "three";
-import { SCALE } from "./config.js";
+import { SCALE, PLANETS } from "./config.js";
 
 const KM = SCALE.unitKm;
 function fmtKm(km) {
@@ -16,6 +16,7 @@ export class StarMap {
   constructor(system, onSelect, onClose) {
     this.system = system; this.onSelect = onSelect; this.onClose = onClose;
     this.open = false;
+    this._openedAt = 0;
     this.cap = null;            // clé de l'astre choisi
     this.ship = null;
     this._v = new THREE.Vector3();
@@ -56,7 +57,12 @@ export class StarMap {
     this.canvas.addEventListener("click", (e) => this._onCanvasClick(e));
     addEventListener("keydown", (e) => {
       if (!this.open) return;
-      if (e.code === "Escape" || e.code === "KeyM") { e.preventDefault(); this.onClose && this.onClose(); }
+      // ignore l'événement M qui vient tout juste d'OUVRIR la carte (même frappe :
+      // le gestionnaire d'input s'exécute avant celui-ci) -> sinon la carte se
+      // referme instantanément et la sortie de pointer-lock déclenche la pause.
+      if (performance.now() - this._openedAt < 200) return;
+      const key = (e.key || "").toLowerCase();
+      if (e.code === "Escape" || e.code === "KeyM" || key === "m") { e.preventDefault(); this.onClose && this.onClose(); }
     });
   }
 
@@ -78,6 +84,7 @@ export class StarMap {
   show(ship, cap) {
     this.ship = ship; this.cap = cap || null;
     this.open = true;
+    this._openedAt = performance.now();
     this.ov.classList.remove("hidden");
     this._buildList();
     this._refreshCap();
@@ -140,6 +147,21 @@ export class StarMap {
     // cercles de repère
     ctx.strokeStyle = "rgba(98,216,255,.08)"; ctx.lineWidth = 1;
     for (const f of [0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.arc(c, c, R * f, 0, Math.PI * 2); ctx.stroke(); }
+
+    // ceintures d'astéroïdes (bandes discrètes, libellées)
+    const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1;
+    for (const [inner, outer, col, label] of [
+      [AU * 2.1, AU * 3.35, "rgba(184,168,136,.10)", "CEINTURE"],
+      [AU * 31, AU * 49, "rgba(159,184,216,.07)", "KUIPER"],
+    ]) {
+      const ri = rr(inner), ro = rr(outer);
+      if (ro <= ri) continue;
+      ctx.beginPath(); ctx.arc(c, c, ro, 0, Math.PI * 2); ctx.arc(c, c, ri, 0, Math.PI * 2, true);
+      ctx.fillStyle = col; ctx.fill();
+      ctx.fillStyle = "rgba(190,200,215,.4)"; ctx.font = "9px ui-monospace, monospace"; ctx.textAlign = "center";
+      ctx.fillText(label, c, c - (ri + ro) / 2);
+      ctx.textAlign = "start";
+    }
 
     // orbites (rayon = distance courante de chaque astre)
     ctx.strokeStyle = "rgba(120,170,220,.10)";

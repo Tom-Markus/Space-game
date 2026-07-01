@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { SHIP } from "./config.js";
+import { SETTINGS } from "./settings.js";
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
@@ -64,6 +65,7 @@ export class Ship {
     this._Rd = new THREE.Vector3(); this._Ud = new THREE.Vector3();
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion();
     this._baseFov = 60; this._t = 0; this._collided = false;
+    this._bank = 0;                          // inclinaison visuelle en virage
     this.clearance = SHIP.size * 1.6;
     this._build();
     scene.add(this.group);
@@ -204,14 +206,21 @@ export class Ship {
 
     // ---- orientation (souris + clavier), sensibilité douce ----
     const md = input.consumeMouse();
-    const s = SHIP.mouseSens;
+    const s = SHIP.mouseSens * SETTINGS.sens;
+    const ySign = SETTINGS.invertY ? -1 : 1;
     let yaw = -md.dx * s - input.axisYaw() * SHIP.yawRate * dt;
-    let pitch = -md.dy * s - input.axisPitch() * SHIP.pitchRate * dt;
+    let pitch = (-md.dy * s) * ySign - input.axisPitch() * SHIP.pitchRate * dt;
     const cap = 0.06;                                   // limite anti à-coups
     yaw = THREE.MathUtils.clamp(yaw, -cap, cap);
     pitch = THREE.MathUtils.clamp(pitch, -cap, cap);
     if (yaw) g.rotateY(yaw);
     if (pitch) g.rotateX(pitch);
+
+    // ---- inclinaison en virage : le MODÈLE se penche dans le virage ----
+    // (la caméra, elle, reste à l'horizontale -> dynamique sans nausée)
+    const bankTarget = THREE.MathUtils.clamp((yaw / Math.max(dt, 1e-4)) * 0.28, -0.5, 0.5);
+    this._bank += (bankTarget - this._bank) * Math.min(1, dt * 4.5);
+    this.model.rotation.z = this._bank;
 
     // ---- auto-nivellement du roulis (horizon stable = anti-nausée) ----
     this.forward(this._fwd);

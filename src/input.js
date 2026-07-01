@@ -9,7 +9,7 @@ const HELD_BIND = {
   ArrowUp: "pitchUp", ArrowDown: "pitchDown",
   ArrowLeft: "yawL", ArrowRight: "yawR",
 };
-const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause", KeyJ: "journal" };
+const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause", KeyJ: "journal", Escape: "pause" };
 // Fallback sur le glyphe imprimé (e.key) — indispensable en AZERTY/QWERTZ où la
 // touche marquée « M » envoie e.code = "Semicolon", pas "KeyM".
 const HELD_KEY = { w: "forward", z: "forward", s: "back", e: "interact" };
@@ -38,7 +38,10 @@ export class Input {
     const lookupHeld = (e) => HELD_BIND[e.code] || HELD_KEY[(e.key || "").toLowerCase()];
     addEventListener("keydown", (e) => {
       const pcmd = lookupPress(e);
-      if (pcmd) { if (this.enabled) this._emit(pcmd); e.preventDefault(); return; }
+      // les commandes « press » sont TOUJOURS émises (les gestionnaires filtrent
+      // selon l'état du jeu) : sinon P/Échap ne pouvaient plus REPRENDRE la partie,
+      // l'input étant désactivé pendant la pause.
+      if (pcmd) { this._emit(pcmd); e.preventDefault(); return; }
       const c = lookupHeld(e);
       if (!c) return;
       if (!this.held.has(c) && c === "interact" && this.enabled) this._emit("interact");

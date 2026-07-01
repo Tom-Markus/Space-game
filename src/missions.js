@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { PLANETS, CAMPAIGN_ORDER } from "./config.js";
 import { T } from "./strings.js";
-import { STORY, ACTIVITIES } from "./story.js";
+import { STORY, ACTIVITIES, ACTS } from "./story.js";
 import { makeActivity } from "./activities.js";
 
 // La campagne « Le Dernier Signal » : une mission par astre, chacune porteuse
@@ -14,6 +14,8 @@ export class Missions {
     this.comms = comms; this.onChoice = onChoice;
     ctx = ctx || {};
     this.status = ctx.status; this.scene = ctx.scene; this.onFx = ctx.onFx || (() => {});
+    this.onAct = ctx.onAct || (() => {});
+    this._lastAct = 0;
     this.list = CAMPAIGN_ORDER
       .map((k) => PLANETS.find((p) => p.key === k))
       .filter((d) => d && d.mission)
@@ -44,7 +46,10 @@ export class Missions {
     this.targetReady = false;          // le marqueur de cap n'apparaît qu'après le briefing
     if (this.activity) { this.activity.cleanup(); this.activity = null; }
     const st = STORY[m.key] || {};
-    this.hud.setMission(this.completed + 1, this.list.length, m.def.mission.title, st.objective || m.def.mission.desc, m.def.name);
+    // carte de titre à chaque changement d'acte (« ACTE II — L'ÉCHO »…)
+    if (st.act && st.act !== this._lastAct) { this._lastAct = st.act; this.onAct(st.act); }
+    const actLabel = st.act && ACTS[st.act] ? ACTS[st.act].num : "";
+    this.hud.setMission(this.completed + 1, this.list.length, m.def.mission.title, st.objective || m.def.mission.desc, m.def.name, actLabel);
     this.hud.setProgress(0);
     const body = this.system.bodies.get(m.key);
     const adef = ACTIVITIES[m.key] || { type: "lock" };

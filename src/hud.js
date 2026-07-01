@@ -30,15 +30,22 @@ export class Hud {
     };
     this.mm = this.el.minimap.getContext("2d");
     this._v = new THREE.Vector3();
-    // rayon radar = orbite de Pluton (les objets épars au-delà sortent du radar)
+    this._v2 = new THREE.Vector3();
+    // rayon radar = orbite de Pluton (les objets épars au-delà sont plaqués au bord)
     this._maxDist = (PLANETS.find((p) => p.key === "pluto")?.distance || 1) * 1.1;
+    // ceintures dessinées sur le radar (bandes discrètes)
+    const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1;
+    this._belts = [
+      { inner: AU * 2.1, outer: AU * 3.35, color: "rgba(184,168,136,.10)" },
+      { inner: AU * 31, outer: AU * 49, color: "rgba(159,184,216,.08)" },
+    ];
     this._list = [];
   }
 
-  setMission(num, total, title, desc, name) {
+  setMission(num, total, title, desc, name, act) {
     this.el.mpTitle.textContent = `${name} — ${title}`;
     this.el.mpDesc.textContent = desc;
-    this.el.mpCount.textContent = `${num}/${total}`;
+    this.el.mpCount.textContent = act ? `${act} · ${num}/${total}` : `${num}/${total}`;
     this.setProgress(0);
   }
   setProgress(p) {
@@ -105,8 +112,7 @@ export class Hud {
   updateTargetMarker(camera, world, name, distU, isNav = false) {
     if (!world) { this.el.marker.style.display = "none"; this.el.arrow.style.display = "none"; return; }
     const W = innerWidth, H = innerHeight;
-    const cam = world.clone().applyMatrix4(camera.matrixWorldInverse);
-    const inFront = cam.z < 0;
+    const inFront = this._v2.copy(world).applyMatrix4(camera.matrixWorldInverse).z < 0;
     this._v.copy(world).project(camera);
     const sx = (this._v.x * 0.5 + 0.5) * W, sy = (-this._v.y * 0.5 + 0.5) * H;
     const label = isNav ? "⌖ " + name : name;
@@ -131,26 +137,44 @@ export class Hud {
 
   updateMinimap(system, ship, targetKey) {
     const ctx = this.mm, S = this.el.minimap.width, c = S / 2;
-    const scale = (c - 10) / this._maxDist;
+    const rMax = c - 10;
+    const scale = rMax / this._maxDist;
     ctx.clearRect(0, 0, S, S);
+    // ceintures : bandes discrètes
+    for (const b of this._belts) {
+      const ri = Math.min(b.inner * scale, rMax), ro = Math.min(b.outer * scale, rMax);
+      if (ro <= ri) continue;
+      ctx.beginPath();
+      ctx.arc(c, c, ro, 0, Math.PI * 2);
+      ctx.arc(c, c, ri, 0, Math.PI * 2, true);
+      ctx.fillStyle = b.color; ctx.fill();
+    }
     ctx.strokeStyle = "rgba(98,216,255,.10)"; ctx.lineWidth = 1;
     for (const p of PLANETS) {
-      if (!p.distance) continue;
+      if (!p.distance || p.distance > this._maxDist) continue;
       ctx.beginPath(); ctx.arc(c, c, p.distance * scale, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.arc(c, c, 3.5, 0, Math.PI * 2); ctx.fill();
     for (const [key, b] of system.bodies) {
       if (key === "sun" || key === "moon") continue;
       b.getWorldPosition(this._v);
-      const x = c + this._v.x * scale, y = c + this._v.z * scale;
+      let x = c + this._v.x * scale, y = c + this._v.z * scale;
+      // au-delà du rayon radar (Hauméa, Makémaké, Éris…) : plaqué au bord, atténué
+      const dx = x - c, dy = y - c, dd = Math.hypot(dx, dy);
+      const clamped = dd > rMax;
+      if (clamped) { x = c + (dx / dd) * rMax; y = c + (dy / dd) * rMax; }
       if (key === targetKey) {
         ctx.strokeStyle = "#ffc24d"; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
       }
+      ctx.globalAlpha = clamped ? 0.45 : 1;
       ctx.fillStyle = "#" + new THREE.Color(b.def.color || 0x99aabb).getHexString();
-      ctx.beginPath(); ctx.arc(x, y, key === targetKey ? 3 : 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, key === targetKey ? 3 : clamped ? 1.6 : 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
-    const sx = c + ship.group.position.x * scale, sy = c + ship.group.position.z * scale;
+    let sx = c + ship.group.position.x * scale, sy = c + ship.group.position.z * scale;
+    const sdx = sx - c, sdy = sy - c, sdd = Math.hypot(sdx, sdy);
+    if (sdd > rMax) { sx = c + (sdx / sdd) * rMax; sy = c + (sdy / sdd) * rMax; }   // vaisseau plaqué au bord
     ship.forward(this._v); const a = Math.atan2(this._v.z, this._v.x);
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(a);
     ctx.fillStyle = "#62ffb0"; ctx.beginPath();

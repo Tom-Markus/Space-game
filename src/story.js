@@ -34,6 +34,14 @@ export const SPEAKERS = {
   sys:     { name: "ODYSSÉE",            cls: "sys"     },
 };
 
+// Actes nommés : affichés en carte de titre plein écran au fil de la campagne
+// et rappelés dans le panneau MISSION. Donnent sa respiration au récit.
+export const ACTS = {
+  1: { num: "ACTE I",   title: "L'APPEL",  sub: "Un signal impossible connaît votre nom." },
+  2: { num: "ACTE II",  title: "L'ÉCHO",   sub: "Le temps se tord. Quelqu'un a déjà vu ce voyage." },
+  3: { num: "ACTE III", title: "LA BOUCLE", sub: "À la frontière, le cercle attend d'être fermé — ou brisé." },
+};
+
 const A = (text, fx) => ({ who: "aria", text, fx });
 const C = (text, fx) => ({ who: "control", text, fx });
 const V = (text, fx) => ({ who: "vance", text, fx });
@@ -341,6 +349,26 @@ export const BARKS = {
     A("Aïe. Vous savez qu'on peut CONTOURNER les planètes, Commandant ?"),
     A("Choc enregistré. La coque vous pardonne. Une fois."),
     A("…On va dire que c'était volontaire."),
+  ],
+  // entrées de région (ceintures, anneaux) — déclenchées par le champ de roches local
+  belt: [
+    A("Ceinture principale. Des milliards de cailloux, vestiges d'une planète qui n'a jamais réussi à naître."),
+    A("Nous entrons dans la ceinture d'astéroïdes. Je surveille les gros — évitez quand même les petits."),
+  ],
+  kuiper: [
+    A("Ceinture de Kuiper. Les décombres gelés de la création du Système. Presque personne n'est venu si loin."),
+    A("Des mondes de glace partout autour de nous. Ici, même le Soleil n'est plus qu'une étoile parmi d'autres."),
+  ],
+  rings: [
+    A("Nous SOMMES dans les anneaux, Commandant. Des icebergs par milliards, en orbite parfaite depuis cent millions d'années."),
+    A("De la glace pure à perte de vue. Si je pouvais retenir mon souffle, c'est maintenant que je le ferais."),
+  ],
+  // longs silences de croisière : ARIA meuble, et étoffe le monde
+  idle: [
+    A("Vous entendez ce silence, Commandant ? Avant la mission, je croyais que le vide était vide. Il est… attentif."),
+    A("J'ai recompté les étoiles visibles. Deux fois. Les mêmes. C'est rassurant — ou vertigineux, je n'ai pas décidé."),
+    A("Korolev disait que l'espace rend humble. De là où nous sommes, la Terre tiendrait dans un pixel."),
+    A("Pendant que vous pilotez, je relis les journaux de Pionnier. Chaque ligne semble m'être adressée. C'est absurde. N'est-ce pas ?"),
   ],
 };
 

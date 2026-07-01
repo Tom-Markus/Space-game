@@ -24,6 +24,19 @@ anisotrope. Un **sélecteur de qualité** dans le menu (Ultra 8K / Élevé 4K / 
 adapte la résolution chargée à la machine — chaque mode ne télécharge que sa résolution.
 Bonus : 4 **planètes naines** explorables — Cérès, Hauméa, Makémaké, Éris — à leur vraie distance.
 
+### ✨ Effets d'immersion (procéduraux, aucun asset)
+
+- **Soleil vivant** : surface convective **animée par shader** (granulation, taches,
+  assombrissement centre-bord) — approchez-vous, les halos s'effacent et la fournaise apparaît.
+- **Lens flare** du Soleil (fantômes + strie anamorphique), occulté par les planètes.
+- **Poussière de vitesse** enveloppant la caméra : le vide « défile » enfin en croisière,
+  et s'étire en **traînées d'étoiles 3D** à la distorsion.
+- **Ceintures d'astéroïdes** (principale + Kuiper) : voile de particules au loin, et
+  **vrais rochers instanciés** qui se matérialisent autour de vous quand vous les traversez —
+  y compris **dans les anneaux de Saturne**. ARIA les commente à l'entrée.
+- **Inclinaison en virage** : le vaisseau se penche dans les courbes (la caméra reste stable).
+- Départ **côté jour** : la première image du jeu est un lever de Terre éclairé.
+
 ## 📐 Échelle — à taille réelle
 
 L'**unité de référence est le vaisseau** : il mesure **exactement 100 m de long = 1 unité scène**.
@@ -67,9 +80,13 @@ L'horizon se **stabilise automatiquement** (anti-nausée) : pas de roulis à gé
 | Accélérer / Ralentir-reculer | **Z/W** / **S** |
 | Postcombustion | **Maj** |
 | **Distorsion (super-boost)** | **Espace** (maintenir) |
-| Analyser / Atterrir | **E** (maintenir) |
+| Journal du signal | **J** |
 | Orienter (alternatif) | **Flèches** |
 | Carte du système / Aide / Pause | **M** / **H** / **Échap** |
+| Couper / remettre le son | **C** |
+
+La **sensibilité souris** et l'**inversion de l'axe Y** se règlent dans le menu **Pause**
+(préférences mémorisées).
 
 La touche **M** (ou un clic sur le radar) ouvre la **carte du système** en plein écran :
 cliquez un astre pour en faire votre **cap**. De retour au pilotage, une **flèche** vous
@@ -83,9 +100,10 @@ Manette (Gamepad) et commandes **tactiles** (joystick + boutons) sont également
 ## 🎯 But du jeu — la campagne « Le Dernier Signal »
 
 Dix chapitres, un par astre, chacun porteur d'un **fragment du signal** à récupérer.
-Suivez le marqueur d'objectif, approchez la cible et maintenez **E** pour analyser /
-sonder / prélever, posez-vous sur la Lune, ou **traversez** les anneaux de Saturne.
-ARIA décode chaque fragment et le récit avance.
+Suivez le marqueur d'objectif : **verrouillez** les sources en les gardant dans le nez
+du vaisseau, **collectez** les éclats de données en volant à travers, **posez-vous** en
+douceur sur la Lune. ARIA décode chaque fragment et le récit avance, ponctué par des
+**cartes de titre d'acte** plein écran.
 
 | Acte | Astres | Ce qui se joue |
 |---|---|---|
@@ -125,9 +143,13 @@ logic.js            stub requis par la plateforme de déploiement
 src/
   main.js           amorçage, boucle de jeu, machine à états
   scene.js          renderer, caméra, post-traitement (bloom)
-  bodies.js         Soleil, planètes, Lune, anneaux, atmosphères, étoiles
-  ship.js           vaisseau (modèle + physique de vol + caméra 3ᵉ personne)
+  bodies.js         Soleil (shader animé), planètes, Lune, anneaux, atmosphères, étoiles
+  fx.js             ★ immersion : poussière de vitesse, traînées warp, lens flare,
+                      champs de roches locaux (ceintures, anneaux de Saturne)
+  ship.js           vaisseau (modèle + physique de vol + inclinaison + caméra 3ᵉ personne)
   input.js          clavier / souris / tactile / manette
+  settings.js       préférences (sensibilité, inversion Y) persistées
+  starmap.js        carte du système plein écran (cap de navigation)
   missions.js       campagne : enchaîne les missions, le récit et les activités
   activities.js     ★ gameplay : verrouillage (visée) / collecte d'éclats / appontage + dangers
   status.js         intégrité coque + bouclier (dangers, repli « fail-soft »)

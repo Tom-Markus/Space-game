@@ -23,6 +23,10 @@
 <div id="warpfx"></div>
 <!-- calque d'effets scénarisés : éruption solaire, parasites de liaison -->
 <div id="fxflash"></div>
+<!-- vignette cinématique permanente (très légère) -->
+<div id="vignette"></div>
+<!-- carte de titre d'acte (« ACTE I — L'APPEL ») -->
+<div id="actcard" class="hidden"></div>
 
 <!-- ======================= LOADING ======================= -->
 <div id="loading" class="overlay">
@@ -160,6 +164,17 @@
     <button id="resumeBtn" class="btn primary" data-str="resumeBtn">REPRENDRE</button>
     <button id="helpBtn" class="btn" data-str="helpBtn">COMMANDES</button>
     <button id="menuBtn" class="btn" data-str="menuBtn">MENU</button>
+    <div class="settings">
+      <div class="set-row">
+        <span class="set-label">SENSIBILITÉ SOURIS</span>
+        <input id="sensRange" type="range" min="0.4" max="2" step="0.1" value="1">
+        <span id="sensVal" class="set-val">×1.0</span>
+      </div>
+      <label class="set-row check">
+        <span class="set-label">INVERSER L'AXE Y</span>
+        <input id="invertY" type="checkbox">
+      </label>
+    </div>
   </div>
 </div>
 
@@ -185,7 +200,7 @@
     <button class="tbtn warp" data-cmd="warp">WARP</button>
     <button class="tbtn" data-cmd="forward">▲</button>
     <button class="tbtn" data-cmd="boost">BOOST</button>
-    <button class="tbtn act" data-cmd="interact">E</button>
+    <button class="tbtn act" data-cmd="back">▼</button>
   </div>
 </div>
 

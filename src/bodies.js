@@ -158,6 +158,52 @@ void main(){
   gl_FragColor = vec4(toLin(c.rgb), a);
 }`;
 
+// Surface solaire PROCÉDURALE animée : granulation convective (fbm de bruit de
+// valeur 3D sur la sphère), taches solaires sombres, assombrissement centre-bord
+// et limbe surchauffé. Les couleurs dépassent 1.0 -> nourrissent le bloom.
+const SUN_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec3 vPos; varying vec3 vN; varying vec3 vView;
+void main(){
+  vPos = normalize(position);
+  vN = normalize(normalMatrix * normal);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vView = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+  #include <logdepthbuf_vertex>
+}`;
+const SUN_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform float time;
+varying vec3 vPos; varying vec3 vN; varying vec3 vView;
+float hash(vec3 p){ p = fract(p * 0.3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float noise(vec3 x){
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                 mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                 mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p *= 2.03; a *= 0.55; } return v; }
+void main(){
+  #include <logdepthbuf_fragment>
+  vec3 p = vPos * 42.0;
+  float g  = fbm(p + vec3(0.0, time * 0.10, time * 0.05));       // granulation lente
+  float g2 = fbm(p * 3.1 - vec3(time * 0.14, 0.0, time * 0.06)); // détail fin
+  float m = pow(g * 0.72 + g2 * 0.28, 1.6);
+  vec3 dark = vec3(0.98, 0.34, 0.05), mid = vec3(1.0, 0.62, 0.18), hot = vec3(1.0, 0.95, 0.78);
+  vec3 col = mix(dark, mid, smoothstep(0.10, 0.50, m));
+  col = mix(col, hot, smoothstep(0.50, 0.95, m));
+  float spot = smoothstep(0.60, 0.74, fbm(p * 0.35 + 7.31));      // taches solaires
+  col *= 1.0 - spot * 0.5;
+  float mu = clamp(dot(normalize(vN), normalize(vView)), 0.0, 1.0);
+  col *= 0.30 + 0.70 * pow(mu, 0.42);                              // centre-bord
+  col += vec3(1.0, 0.55, 0.20) * pow(1.0 - mu, 3.0) * 0.9;         // limbe chauffé
+  gl_FragColor = vec4(col * 1.35, 1.0);
+}`;
+
 const SKY_VERT = `
 #include <common>
 #include <logdepthbuf_pars_vertex>
@@ -266,12 +312,15 @@ export class SolarSystem {
     scene.add(new THREE.AmbientLight(0x14223c, 0.025));
 
     // ---- Soleil ----
-    // couleur >> 1 : le disque dépasse largement le seuil du bloom -> halo rond
-    // marqué ajouté par le post-traitement, en plus des sprites (eux toujours ronds).
+    // Surface procédurale animée (granulation, taches, limbe). Les couleurs > 1
+    // dépassent le seuil du bloom -> halo rond marqué en plus des sprites.
     // Sphère haute résolution (128×96) : aucun bord facetté que le bloom amplifierait
     // en « formes géométriques » quand on s'approche.
-    const sunMat = new THREE.MeshBasicMaterial({ map: this._color(SUN.map), color: new THREE.Color(2.05, 1.75, 1.4) });
-    const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 128, 96), sunMat);
+    this.sunMat = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 } },
+      vertexShader: SUN_VERT, fragmentShader: SUN_FRAG,
+    });
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN.radius, 128, 96), this.sunMat);
     scene.add(sun); this.sun = sun;
     // halo solaire en deux couches : un cœur dense + un voile diffus.
     const core = makeGlowSprite(SUN_CORE); core.scale.setScalar(SUN.radius * 4.0);
@@ -362,6 +411,7 @@ export class SolarSystem {
     }
     // anneaux
     if (def.ring) this._buildRing(def, tilt);
+    if (def.key === "saturn") this.saturnTilt = tilt;   // repère des anneaux (rochers locaux, cf. fx.js)
 
     this.bodies.set(def.key, { def, holder, radius: def.radius, getWorldPosition: (v) => holder.getWorldPosition(v) });
 
@@ -466,10 +516,16 @@ export class SolarSystem {
     }
     if (this.stars) this.stars.rotation.y += 1e-6 * dt;
     if (this.sun) this.sun.rotation.y += 0.006 * SPIN_SCALE * dt;
+    if (this.sunMat) this.sunMat.uniforms.time.value = this._t;   // convection animée
     // halo solaire : pulsation douce + taille angulaire minimale gardée à toute distance
     // (le voile reste rond et visible de très loin au lieu de devenir un bloom carré).
     if (this.sunGlow && camera) {
       const d = Math.max(camera.position.length(), SUN.radius);   // Soleil à l'origine
+      // de PRÈS, les halos s'effacent pour révéler la surface convective animée ;
+      // de loin ils portent tout l'éclat (le disque ne fait plus que quelques pixels)
+      const fade = THREE.MathUtils.smoothstep(d, SUN.radius * 1.6, SUN.radius * 7.0);
+      this.sunGlow.core.material.opacity = fade;
+      this.sunGlow.halo.material.opacity = fade;
       const pulse = 0.97 + Math.sin(this._t * 1.5) * 0.03;
       // Taille proportionnelle au disque solaire vu : grandit légèrement avec la
       // distance pour rester visible, mais reste TOUJOURS proche du diamètre apparent

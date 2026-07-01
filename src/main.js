@@ -10,9 +10,11 @@ import { Music } from "./music.js";
 import { SFX } from "./sfx.js";
 import { Comms, typeInto } from "./comms.js";
 import { Status } from "./status.js";
-import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, FRAGMENT_GLOSS, SPEAKERS } from "./story.js";
+import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, FRAGMENT_GLOSS, SPEAKERS, ACTS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
-import { SHIP, SCALE, QUALITY } from "./config.js";
+import { SHIP, SCALE, QUALITY, PLANETS } from "./config.js";
+import { SpeedDust, LensFlare, LocalRocks, BeltHaze } from "./fx.js";
+import { SETTINGS, saveSettings } from "./settings.js";
 
 applyStaticStrings();
 
@@ -120,11 +122,14 @@ addEventListener("keydown", (e) => {
 });
 
 let system, ship, missions, starmap, pionnier;
+let dust, flare, rocks, lastRegion = null;   // effets d'immersion (fx.js)
+let playingSince = 0;                        // anti « pause fantôme » à la reprise du pointer-lock
 let navTarget = null;                    // cap choisi par le joueur via la carte
 let trustAria = true, choiceMade = false; // choix moral de Saturne -> oriente la fin
 let freeMode = false;                     // mode libre : pas d'histoire, juste l'espace
 let state = "loading";
 let last = performance.now(), acc = 0;
+let idleT = 0;                            // silence radio prolongé -> réplique d'ARIA
 const STEP = 1 / 60;
 const stats = { dist: 0, start: 0 };
 let prevMode = "cruise";
@@ -153,6 +158,20 @@ hud.buildHelp(document.getElementById("help"), T("controls"));
   show(QUALITY);
 })();
 
+// ---- réglages de pilotage (menu pause) : sensibilité + inversion Y ----
+(function setupSettings() {
+  const range = document.getElementById("sensRange");
+  const val = document.getElementById("sensVal");
+  const inv = document.getElementById("invertY");
+  if (!range || !val || !inv) return;
+  const paint = () => { val.textContent = "×" + Number(SETTINGS.sens).toFixed(1); };
+  range.value = SETTINGS.sens;
+  inv.checked = SETTINGS.invertY;
+  paint();
+  range.addEventListener("input", () => { SETTINGS.sens = parseFloat(range.value) || 1; paint(); saveSettings(); });
+  inv.addEventListener("change", () => { SETTINGS.invertY = inv.checked; saveSettings(); });
+})();
+
 // ---- chargement ----
 system = new SolarSystem(scene);
 system.maxAniso = stage.renderer.capabilities.getMaxAnisotropy();
@@ -165,24 +184,70 @@ system.load((p) => {
   pionnier = buildProbe();                 // la sonde Pionnier-9, dérivant près de Pluton
   scene.add(pionnier);
   starmap = new StarMap(system, (key) => { navTarget = key; }, closeMap);
+  setupFx();
   placeShipStart();
   document.getElementById("loading").classList.add("hidden");
   document.getElementById("start").classList.remove("hidden");
   state = "start";
 });
 
+// ---- effets d'immersion : poussière de vitesse, lens flare, ceintures ----
+function setupFx() {
+  const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1.496e9;
+  dust = new SpeedDust(scene);
+  flare = new LensFlare(system);
+  // ceintures vues de loin : poussière zodiacale DISCRÈTE (à peine suggérée,
+  // comme la vraie ceinture — un voile, pas un mur de points)
+  new BeltHaze(scene, [
+    { inner: AU * 2.1, outer: AU * 3.35, thickness: AU * 0.05, count: 2200, color: 0xb8a888, opacity: 0.07, size: 1.2 },
+    { inner: AU * 31, outer: AU * 49, thickness: AU * 1.4, count: 2600, color: 0x9fb8d8, opacity: 0.07, size: 1.4 },
+  ]);
+  // champs de roches locaux : matérialisés autour de la caméra dans chaque région
+  const v = new THREE.Vector3();
+  const saturn = system.bodies.get("saturn");
+  const sTilt = system.saturnTilt;           // repère incliné des anneaux (cf. bodies.js)
+  const sInner = 74500 * 10 * 0.94, sOuter = 140180 * 10 * 1.04;
+  rocks = new LocalRocks(scene, [
+    {
+      name: "rings", cell: 1200, prob: 0.6, sizeMin: 60, sizeMax: 260, color: 0xcfd8de,
+      contains: (p) => {
+        if (!saturn || !sTilt) return false;
+        v.copy(p); sTilt.worldToLocal(v);
+        const r = Math.hypot(v.x, v.z);
+        return r > sInner && r < sOuter && Math.abs(v.y) < 2600;
+      },
+    },
+    {
+      name: "belt", cell: 4600, prob: 0.5, sizeMin: 300, sizeMax: 1500, color: 0xa89f90,
+      contains: (p) => {
+        const r = Math.hypot(p.x, p.z);
+        return r > AU * 2.05 && r < AU * 3.4 && Math.abs(p.y) < AU * 0.04;
+      },
+    },
+    {
+      name: "kuiper", cell: 6200, prob: 0.42, sizeMin: 400, sizeMax: 1800, color: 0x93a3b8,
+      contains: (p) => {
+        const r = Math.hypot(p.x, p.z);
+        return r > AU * 30.5 && r < AU * 49.5 && Math.abs(p.y) < AU * 1.2;
+      },
+    },
+  ]);
+}
+
 function placeShipStart() {
   system.worldPos("earth", tmp);
   const er = system.radiusOf("earth");
-  const outward = tmp.clone().normalize();
+  // départ CÔTÉ JOUR : le Soleil dans le dos, la Terre éclairée plein cadre
+  // (première image du jeu = un lever de Terre, pas un hémisphère noir).
+  const sunward = tmp.clone().normalize().negate();
   const up = new THREE.Vector3(0, 1, 0);
-  const tangent = new THREE.Vector3().crossVectors(up, outward).normalize();
+  const tangent = new THREE.Vector3().crossVectors(up, sunward).normalize();
   const start = tmp.clone()
-    .addScaledVector(outward, er * SHIP.startOffsetR)
-    .addScaledVector(up, er * 0.7)
-    .addScaledVector(tangent, er * 1.3);
+    .addScaledVector(sunward, er * SHIP.startOffsetR)
+    .addScaledVector(up, er * 0.55)
+    .addScaledVector(tangent, er * 1.1);
   ship.reset(start, tmp);
-  camera.position.copy(start).addScaledVector(outward, SHIP.cam.dist).addScaledVector(up, SHIP.cam.height);
+  camera.position.copy(start).addScaledVector(sunward, SHIP.cam.dist).addScaledVector(up, SHIP.cam.height);
   camera.lookAt(tmp);
 }
 
@@ -197,8 +262,24 @@ function newGame() {
     document.body.classList.add("free-mode");
   } else {
     document.body.classList.remove("free-mode");
-    missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx });
+    missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx, onAct: showActCard });
   }
+}
+
+// ---- carte de titre d'acte (« ACTE I — L'APPEL ») : ponctue la campagne ----
+let _actTimer = null;
+function showActCard(act) {
+  const a = ACTS[act];
+  if (!a || freeMode) return;
+  const el = document.getElementById("actcard");
+  if (!el) return;
+  el.innerHTML = `<div class="ac-num">${a.num}</div><div class="ac-title">${a.title}</div><div class="ac-sub">${a.sub || ""}</div>`;
+  el.classList.remove("hidden", "show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  sfx.missionNext && sfx.missionNext();
+  clearTimeout(_actTimer);
+  _actTimer = setTimeout(() => el.classList.remove("show"), 5000);
 }
 
 function startGame() {
@@ -206,9 +287,11 @@ function startGame() {
   sfx.start();
   if (!missions) newGame();
   for (const id of ["start", "win", "pause"]) document.getElementById(id).classList.add("hidden");
-  document.getElementById("hud").classList.remove("hidden");
+  const hudEl = document.getElementById("hud");
+  hudEl.classList.remove("hidden");
+  hudEl.classList.remove("boot"); void hudEl.offsetWidth; hudEl.classList.add("boot");  // animation d'allumage
   if (isTouch) document.getElementById("touchUI").classList.remove("hidden");
-  input.enabled = true; state = "playing"; last = performance.now(); acc = 0;
+  input.enabled = true; state = "playing"; playingSince = performance.now(); last = performance.now(); acc = 0;
   if (!isTouch) input.requestLock();
 }
 
@@ -221,7 +304,7 @@ function pauseGame() {
 function resumeGame() {
   if (state !== "paused") return;
   document.getElementById("pause").classList.add("hidden");
-  input.enabled = true; state = "playing"; last = performance.now();
+  input.enabled = true; state = "playing"; playingSince = performance.now(); last = performance.now();
   if (!isTouch) input.requestLock();
 }
 // Retour au menu d'accueil (permet de changer de mode sans recharger la page).
@@ -243,7 +326,7 @@ function openMap() {
 function closeMap() {
   if (state !== "map") return;
   starmap.close();
-  input.enabled = true; state = "playing"; last = performance.now();
+  input.enabled = true; state = "playing"; playingSince = performance.now(); last = performance.now();
   if (!isTouch) input.requestLock();
 }
 
@@ -259,7 +342,7 @@ function resolveChoice(trust) {
   if (state !== "choice") return;
   trustAria = trust; sfx.click();
   document.getElementById("choice").classList.add("hidden");
-  input.enabled = true; state = "playing"; last = performance.now();
+  input.enabled = true; state = "playing"; playingSince = performance.now(); last = performance.now();
   if (!isTouch) input.requestLock();
 }
 
@@ -413,7 +496,12 @@ document.getElementById("choiceTrust").onclick = () => resolveChoice(true);
 document.getElementById("choiceDoubt").onclick = () => resolveChoice(false);
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-input.onPress("unlock", () => { if (state === "playing") pauseGame(); });
+// La perte du pointer-lock met en pause — SAUF dans les instants qui suivent un
+// retour au jeu : l'événement pointerlockchange d'une sortie précédente arrive
+// parfois APRÈS la reprise (course asynchrone) et déclenchait une pause fantôme.
+input.onPress("unlock", () => {
+  if (state === "playing" && performance.now() - playingSince > 600) pauseGame();
+});
 input.onPress("pause", () => (state === "playing" ? pauseGame() : state === "paused" ? resumeGame() : null));
 input.onPress("map", () => { sfx.click(); openMap(); });
 input.onPress("help", () => document.getElementById("help").classList.toggle("hidden"));
@@ -515,6 +603,9 @@ function frame(now) {
       prevMode = mode;
     }
     if (status.hull < 0.34) bark("lowHull");
+    // longs silences : ARIA meuble la croisière (jamais par-dessus un dialogue)
+    idleT = comms.busy ? 0 : idleT + dt;
+    if (idleT > 75) { idleT = 0; bark("idle"); }
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
     document.body.classList.toggle("warping", ship.warping && ship.warpAmount > 0.25);
     const nb = lastNav.key && system.bodies.get(lastNav.key);
@@ -538,6 +629,18 @@ function frame(now) {
   if (pionnier && system) updateProbe(dt);                               // sonde Pionnier-9 près de Pluton
   if (system && system.sky) system.sky.position.copy(camera.position);   // fond stellaire à l'infini
   if (system) system.syncAtmosphere(camera);                             // rayon de vue exact des atmosphères
+
+  // ---- effets d'immersion ----
+  if (dust && ship) dust.update(dt, camera, ship.velocity, ship.warpAmount);
+  if (flare) flare.update(dt, camera);
+  if (rocks && ship) {
+    rocks.update(dt, ship.group.position);
+    const regionName = rocks.activeRegion ? rocks.activeRegion.name : null;
+    if (regionName !== lastRegion) {                 // entrée dans une ceinture / les anneaux
+      lastRegion = regionName;
+      if (regionName) bark(regionName);
+    }
+  }
   stage.render();
 }
 

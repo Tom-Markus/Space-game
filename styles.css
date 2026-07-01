@@ -35,9 +35,35 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 @keyframes warppulse{0%,100%{filter:brightness(.85)}50%{filter:brightness(1.25)}}
 @keyframes warprush{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.7}50%{transform:translate(-50%,-50%) scale(1.35);opacity:1}}
 
+/* ---------- vignette cinématique permanente ---------- */
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:17;
+  background:radial-gradient(ellipse at center,transparent 58%,rgba(1,2,6,.32) 100%)}
+
+/* ---------- lens flare du Soleil (DOM, éléments créés par fx.js) ---------- */
+#lensflare{position:fixed;inset:0;pointer-events:none;z-index:16;opacity:0;mix-blend-mode:screen}
+.lf-ghost{position:absolute;top:0;left:0;border-radius:50%;will-change:transform}
+.lf-streak{position:absolute;top:0;left:0;width:min(72vw,900px);height:2px;border-radius:2px;will-change:transform;
+  background:linear-gradient(90deg,transparent,rgba(190,215,255,.35) 30%,rgba(230,242,255,.55) 50%,rgba(190,215,255,.35) 70%,transparent)}
+
+/* ---------- carte de titre d'acte ---------- */
+#actcard{position:fixed;inset:0;z-index:26;pointer-events:none;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;opacity:0}
+#actcard.show{animation:actIn 5s ease forwards}
+#actcard .ac-num{font-family:var(--mono);font-size:13px;letter-spacing:.6em;color:var(--accent);
+  text-shadow:0 0 16px rgba(98,216,255,.6);padding-left:.6em}
+#actcard .ac-title{font-size:clamp(30px,5.4vw,54px);font-weight:800;letter-spacing:.3em;padding-left:.3em;
+  background:linear-gradient(90deg,#a9ecff,#62d8ff 45%,#9b8cff);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 40px rgba(98,216,255,.25)}
+#actcard .ac-sub{font-size:14px;color:#9fb6dd;letter-spacing:.1em;font-style:italic}
+#actcard::before,#actcard::after{content:"";width:min(420px,60vw);height:1px;
+  background:linear-gradient(90deg,transparent,var(--brd-hi),transparent)}
+@keyframes actIn{0%{opacity:0;transform:scale(.98)}10%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;
   background:radial-gradient(ellipse at center,rgba(10,20,46,.5),rgba(2,4,10,.93));backdrop-filter:blur(4px)}
+/* menu d'accueil : voile plus léger -> la Terre éclairée reste visible derrière */
+#start.overlay{background:radial-gradient(ellipse at center,rgba(8,16,38,.28),rgba(2,4,10,.78));backdrop-filter:blur(2px)}
 .panel{position:relative;background:linear-gradient(180deg,rgba(12,22,42,.72),rgba(6,12,26,.72));
   border:1px solid var(--brd);border-radius:14px;padding:34px 42px;max-width:560px;width:92%;text-align:center;
   box-shadow:0 0 70px rgba(40,120,210,.25),inset 0 0 40px rgba(40,120,210,.05)}
@@ -46,8 +72,10 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 .panel::before{top:8px;left:8px;border-right:0;border-bottom:0}
 .panel::after{bottom:8px;right:8px;border-left:0;border-top:0}
 .logo{font-size:clamp(26px,4.6vw,46px);letter-spacing:.08em;margin:.05em 0 .2em;line-height:1.06;font-weight:800;
-  padding:0 .12em;background:linear-gradient(90deg,#a9ecff,#62d8ff 45%,#9b8cff);-webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 0 34px rgba(98,216,255,.35)}
+  padding:0 .12em;background:linear-gradient(90deg,#a9ecff,#62d8ff 35%,#9b8cff 55%,#a9ecff 80%,#62d8ff);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 34px rgba(98,216,255,.35);animation:logoShimmer 7s ease-in-out infinite}
+@keyframes logoShimmer{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
 .subtitle{color:#9fb6dd;font-size:clamp(13px,2vw,16px);line-height:1.55;margin:.3em auto 1.3em;max-width:50ch}
 .loadlabel{font-family:var(--mono);color:var(--accent);letter-spacing:.12em;margin:.7em 0 0}
 .bar{height:7px;width:100%;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;margin-top:8px}
@@ -81,8 +109,35 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 .winstats .stat b{display:block;font-size:26px;color:var(--accent);font-family:var(--mono)}
 .winstats .stat span{font-size:11px;color:#9bb3d6;letter-spacing:.1em}
 
+/* ---------- réglages (menu pause) ---------- */
+.settings{margin:18px auto 2px;max-width:380px;text-align:left;border-top:1px solid rgba(120,160,210,.15);padding-top:14px}
+.set-row{display:flex;align-items:center;gap:12px;padding:7px 2px;color:#bcd0ee;font-size:12px;cursor:default}
+.set-row.check{cursor:pointer}
+.set-label{flex:1;font-size:10.5px;letter-spacing:.18em;color:#8fa8cd}
+.set-val{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:38px;text-align:right}
+.set-row input[type=range]{flex:2;appearance:none;height:5px;border-radius:4px;background:rgba(255,255,255,.1);outline:none;cursor:pointer}
+.set-row input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 10px rgba(98,216,255,.6);cursor:pointer}
+.set-row input[type=checkbox]{appearance:none;width:38px;height:20px;border-radius:12px;background:rgba(255,255,255,.1);
+  border:1px solid var(--brd);position:relative;cursor:pointer;transition:.2s;margin:0}
+.set-row input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:#8fa8cd;transition:.2s}
+.set-row input[type=checkbox]:checked{background:rgba(98,216,255,.35);border-color:var(--brd-hi)}
+.set-row input[type=checkbox]:checked::after{left:20px;background:var(--accent);box-shadow:0 0 8px rgba(98,216,255,.7)}
+
 /* ---------- HUD frame ---------- */
 #hud{position:fixed;inset:0;z-index:20;pointer-events:none;font-size:14px}
+/* allumage du HUD : les panneaux apparaissent en cascade au décollage
+   (fondu pur : ne touche pas aux transforms de centrage des éléments) */
+#hud.boot .hud-panel,#hud.boot #telemetry,#hud.boot #statusWidget,#hud.boot #radar{
+  animation:hudBoot .6s ease backwards}
+#hud.boot #logPanel{animation-delay:.12s}
+#hud.boot #telemetry{animation-delay:.22s}
+#hud.boot #statusWidget{animation-delay:.3s}
+#hud.boot #radar{animation-delay:.38s}
+#hud.boot #reticle{animation:hudBootRet .8s ease backwards .5s}
+@keyframes hudBoot{from{opacity:0}to{opacity:1}}
+@keyframes hudBootRet{from{opacity:0}to{opacity:.45}}
 .corner{position:fixed;width:26px;height:26px;border:2px solid var(--brd);opacity:.55}
 .corner.tl{top:12px;left:12px;border-right:0;border-bottom:0}
 .corner.tr{top:12px;right:12px;border-left:0;border-bottom:0}
@@ -271,7 +326,7 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 /* ---------- comms : sous-titres radio (bas-centre, au-dessus de la télémétrie) ---------- */
 #comms{position:fixed;left:50%;bottom:98px;transform:translate(-50%,8px);z-index:21;pointer-events:none;
   display:flex;align-items:center;gap:13px;
-  max-width:min(680px,86vw);width:max-content;padding:11px 18px 12px;
+  width:min(640px,86vw);padding:11px 18px 12px;
   background:linear-gradient(165deg,rgba(10,20,40,.84),rgba(6,12,26,.76));
   border:1px solid var(--brd);border-left:2px solid var(--brd-hi);border-radius:13px;backdrop-filter:blur(9px);
   box-shadow:0 8px 34px rgba(0,8,24,.6),inset 0 1px 0 rgba(150,200,255,.12);
