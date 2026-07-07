@@ -352,6 +352,36 @@ export class LocalRocks {
     }
   }
 
+  // Collision vaisseau <-> roches, BALAYÉE (segment prev -> pos : aucun
+  // tunneling, même à 80 000 u/s). Désactivée en distorsion (traverser la
+  // ceinture à des millions d'u/s ne doit jamais stopper le vaisseau).
+  // Renvoie true si un impact vient d'être résolu.
+  resolveShipCollision(prev, ship) {
+    if (!this.list.length) return false;
+    if (Math.abs(ship.speed) > 80000) return false;      // vitesse de distorsion
+    const p = ship.group.position;
+    for (const rock of this.list) {
+      const R = rock.r + ship.clearance;
+      const abx = p.x - prev.x, aby = p.y - prev.y, abz = p.z - prev.z;
+      const apx = rock.x - prev.x, apy = rock.y - prev.y, apz = rock.z - prev.z;
+      const ab2 = abx * abx + aby * aby + abz * abz;
+      let t = ab2 > 0 ? (apx * abx + apy * aby + apz * abz) / ab2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
+      if (dx * dx + dy * dy + dz * dz >= R * R) continue;
+      // repousse le vaisseau hors de la sphère (depuis sa position courante)
+      let nx = p.x - rock.x, ny = p.y - rock.y, nz = p.z - rock.z;
+      let L = Math.hypot(nx, ny, nz);
+      if (L < 1e-3) { nx = abx; ny = aby; nz = abz; L = Math.hypot(nx, ny, nz) || 1; }
+      const k = (R * 1.02) / L;
+      p.set(rock.x + nx * k, rock.y + ny * k, rock.z + nz * k);
+      if (ship.speed > 0) ship.speed *= 0.2;             // l'impact casse la vitesse
+      if (ship.velocity) ship.velocity.multiplyScalar(0.2);
+      return true;
+    }
+    return false;
+  }
+
   // Impact d'un tir : segment (a -> b, rayon élargi rr). Détruit la roche touchée.
   // Renvoie la roche ({x,y,z,r}) ou null.
   tryBoltHit(a, b, rr) {

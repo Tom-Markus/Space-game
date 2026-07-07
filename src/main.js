@@ -136,6 +136,7 @@ const STEP = 1 / 60;
 const stats = { dist: 0, start: 0 };
 let prevMode = "cruise";
 const tmp = new THREE.Vector3();
+const prevShipPos = new THREE.Vector3();  // position avant le pas physique (collision balayée roches)
 let lastNav = { dist: 1e9, key: null };
 
 hud.buildControls(document.getElementById("controlsGrid"), T("controls"));
@@ -625,8 +626,11 @@ function frame(now) {
     let guard = 0;
     while (acc >= STEP && guard++ < 5) {
       lastNav = system.nearestSurface(ship.group.position);
+      prevShipPos.copy(ship.group.position);
       ship.update(STEP, input, lastNav);
       if (ship.resolveCollision(system.bodies.values())) { sfx.impact(); bark("impact"); }
+      // astéroïdes : collision balayée (jamais en distorsion, cf. fx.js)
+      if (rocks && rocks.resolveShipCollision(prevShipPos, ship)) { sfx.impact(); bark("impact"); }
       if (missions) missions.update(STEP, ship, input);
       stats.dist += Math.abs(ship.speed) * STEP;
       acc -= STEP;
@@ -720,6 +724,7 @@ window.__game = {
   get state() { return state; }, get ship() { return ship; },
   get missions() { return missions; }, get system() { return system; }, get input() { return input; },
   get camera() { return camera; }, get comms() { return comms; }, get status() { return status; },
+  get rocks() { return rocks; }, get blaster() { return blaster; },
 };
 
 requestAnimationFrame(frame);
