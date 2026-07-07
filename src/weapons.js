@@ -7,9 +7,11 @@
 import * as THREE from "three";
 
 const BOLT_MAX = 18;
-const BOLT_SPEED = 45000;        // u/s, ajouté à la vitesse du vaisseau au départ
-const BOLT_TTL = 3.2;            // durée de vie (s) -> portée ~150 000 u
-const COOLDOWN = 0.16;           // s entre deux tirs
+// Vitesse contenue : on doit VOIR le trait partir et filer (à 45 000 u/s il
+// traversait tout le champ proche en 2 frames — invisible à l'œil).
+const BOLT_SPEED = 22000;        // u/s, ajouté à la vitesse du vaisseau au départ
+const BOLT_TTL = 4.6;            // durée de vie (s) -> portée ~100 000 u
+const COOLDOWN = 0.15;           // s entre deux tirs
 const BOLT_R = 220;              // rayon « généreux » du projectile pour les impacts
 
 // Traceur : capsule de plasma dessinée (cœur blanc -> gaine cyan -> fondu),
@@ -53,10 +55,12 @@ export class Blaster {
     this._fwd = new THREE.Vector3();
     this._prev = new THREE.Vector3();
 
-    // traceur : deux plans croisés (capsule de plasma), effilés, SANS halo-boule
+    // traceur : deux plans croisés (capsule de plasma) LONGS et lisibles,
+    // + petite tête lumineuse en pointe — un vrai trait de laser qui part.
     this.bolts = [];
     const tex = boltTexture();
-    const planeA = new THREE.PlaneGeometry(11, 135);
+    const fTex2 = flashTexture();
+    const planeA = new THREE.PlaneGeometry(13, 240);
     planeA.rotateX(Math.PI / 2);                 // longueur le long de z
     const planeB = planeA.clone();
     planeB.rotateZ(Math.PI / 2);                 // croisé à 90°
@@ -68,6 +72,13 @@ export class Blaster {
       const grp = new THREE.Group();
       grp.add(new THREE.Mesh(planeA, boltMat));
       grp.add(new THREE.Mesh(planeB, boltMat));
+      const head = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: fTex2, color: 0xeaf6ff, transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      head.scale.setScalar(26);
+      head.position.z = -110;                    // en pointe du traceur
+      grp.add(head);
       grp.visible = false;
       scene.add(grp);
       this.bolts.push({ grp, vel: new THREE.Vector3(), ttl: 0 });
@@ -98,8 +109,10 @@ export class Blaster {
     if (!b) return false;
     const m = muzzles[this._muzzleIdx % muzzles.length];
     this._muzzleIdx++;
-    m.getWorldPosition(b.grp.position);
     this.ship.forward(this._fwd);
+    // départ : la QUEUE du traceur affleure la bouche du canon (rien derrière l'aile)
+    m.getWorldPosition(b.grp.position);
+    b.grp.position.addScaledVector(this._fwd, 130);
     b.vel.copy(this._fwd).multiplyScalar(BOLT_SPEED + Math.max(0, this.ship.speed));
     b.grp.quaternion.copy(this.ship.group.quaternion);
     b.ttl = BOLT_TTL;

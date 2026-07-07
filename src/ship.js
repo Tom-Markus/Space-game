@@ -288,38 +288,41 @@ export class Ship {
       color: 0x0d1017, metalness: 0.4, roughness: 0.6, emissive: 0x1d2431, emissiveIntensity: 0.9,
     });
 
-    // baignoire de coque : le pilote est DANS le fuselage (fini l'espace nu à 360°)
-    // rebord aux épaules sur les côtés, plus bas devant (vue dégagée), haut derrière
-    const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.46, 0.52, 28, 1, true), shellMat);
-    tub.position.set(0, 0.24, -1.10); tub.rotation.x = 0.22;
+    // baignoire de coque : le pilote est DANS le fuselage, mais la VUE PRIME.
+    // Rebord bas devant (la console n'occupe que le bas de l'écran), épaules
+    // sur les côtés, dossier haut derrière.
+    // rotation NÉGATIVE : le rebord plonge à l'AVANT (vue plongeante dégagée)
+    // et remonte derrière la tête du pilote.
+    const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.46, 0.50, 28, 1, true), shellMat);
+    tub.position.set(0, 0.22, -1.10); tub.rotation.x = -0.30;
     cp.add(tub);
     const floor = new THREE.Mesh(new THREE.CircleGeometry(0.5, 28), panelMat.clone());
     floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0.0, -1.10); floor.material.side = THREE.FrontSide;
     cp.add(floor);
 
-    // console principale + visière anti-reflet
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 0.34), panelMat);
-    dash.position.set(0, 0.315, -1.60); dash.rotation.x = 0.30; cp.add(dash);
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.022, 0.17), frameMat);
-    hood.position.set(0, 0.435, -1.64); hood.rotation.x = 0.42; cp.add(hood);
+    // console principale, BASSE (dégagée du champ de vision) + visière fine
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.14, 0.30), panelMat);
+    dash.position.set(0, 0.28, -1.64); dash.rotation.x = 0.30; cp.add(dash);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.016, 0.12), frameMat);
+    hood.position.set(0, 0.372, -1.685); hood.rotation.x = 0.46; cp.add(hood);
 
     // trois écrans MFD (interfaces dessinées : radar / horizon / systèmes),
-    // posés AU-DESSUS de la face supérieure de la console (jamais enfoncés dedans)
+    // posés sur la console, inclinés vers le pilote, sous la ligne d'horizon
     const mkScreen = (kind, x, w, h) => {
-      const bezel = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.028, h + 0.028), frameMat);
-      bezel.position.set(x, 0.395, -1.532); bezel.rotation.x = -0.95; cp.add(bezel);
+      const bezel = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.024, h + 0.024), frameMat);
+      bezel.position.set(x, 0.349, -1.545); bezel.rotation.x = -1.05; cp.add(bezel);
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
         new THREE.MeshBasicMaterial({ map: mfdTexture(kind), toneMapped: false }));
-      scr.position.set(x, 0.396, -1.528); scr.rotation.x = -0.95; cp.add(scr);
+      scr.position.set(x, 0.35, -1.541); scr.rotation.x = -1.05; cp.add(scr);
     };
-    mkScreen("nav", -0.25, 0.195, 0.125);
-    mkScreen("adi", 0, 0.225, 0.145);
-    mkScreen("sys", 0.25, 0.195, 0.125);
+    mkScreen("nav", -0.24, 0.175, 0.11);
+    mkScreen("adi", 0, 0.205, 0.13);
+    mkScreen("sys", 0.24, 0.175, 0.11);
 
     // rangées de boutons rétroéclairés (petits, tamisés), SUR la face inclinée
     const BTN_COLS = [0x62d8ff, 0xffc24d, 0x62ffb0, 0x9b8cff, 0x8fa8cd];
     const dimmed = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
-    const BTN_ROWS = [[0.358, -1.451], [0.343, -1.403]];        // points sur la face (précalculés)
+    const BTN_ROWS = [[0.322, -1.522], [0.309, -1.479]];        // points sur la face (précalculés)
     BTN_ROWS.forEach(([by, bz], r) => {
       for (let i = 0; i < 11; i++) {
         const b = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.005, 0.008),
@@ -364,30 +367,32 @@ export class Ship {
     throttle.position.set(-0.36, 0.345, -1.30); throttle.rotation.z = 0.12;
     cp.add(throttle);
 
-    // montants de verrière fins (piliers A) + traverse haute — un cadre, pas un mur
+    // montants de verrière TRÈS fins, plaqués aux bords du champ de vision,
+    // et traverse haute reculée : un cadre discret, pas des barreaux
     for (const s of [-1, 1]) {
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.56, 0.05), frameMat);
-      pillar.position.set(s * 0.40, 0.60, -1.38);
-      pillar.rotation.z = s * -0.30; pillar.rotation.x = 0.22;
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.60, 0.035), frameMat);
+      pillar.position.set(s * 0.46, 0.60, -1.36);
+      pillar.rotation.z = s * -0.36; pillar.rotation.x = 0.20;
       cp.add(pillar);
     }
-    const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.028, 0.05), frameMat);
-    topBar.position.set(0, 0.845, -1.47); cp.add(topBar);
-    // console plafonnier (interrupteurs)
-    const over = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.02, 0.10), panelMat);
-    over.position.set(0, 0.835, -1.30); cp.add(over);
+    const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.035), frameMat);
+    topBar.position.set(0, 0.895, -1.44); cp.add(topBar);
+    // console plafonnier (interrupteurs), reculée : visible en levant les yeux
+    const over = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.018, 0.09), panelMat);
+    over.position.set(0, 0.875, -1.14); cp.add(over);
     for (let i = 0; i < 4; i++) {
-      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.018),
+      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.016),
         new THREE.MeshBasicMaterial({ color: dimmed(i === 2 ? 0xffc24d : 0x62d8ff, 0.42), toneMapped: false }));
-      sw.position.set(-0.075 + i * 0.05, 0.823, -1.30);
+      sw.position.set(-0.075 + i * 0.05, 0.864, -1.14);
       cp.add(sw);
     }
 
     cp.visible = false;
     model.add(cp);
-    // œil du pilote + point regardé (repère du MODÈLE : suit l'inclinaison en virage)
-    this._eyeLocal = new THREE.Vector3(0, 0.52, -1.02);
-    this._lookLocal = new THREE.Vector3(0, 0.44, -30);
+    // œil du pilote un peu plus HAUT (vue dégagée au-dessus de la console)
+    // + point regardé (repère du MODÈLE : suit l'inclinaison en virage)
+    this._eyeLocal = new THREE.Vector3(0, 0.55, -1.02);
+    this._lookLocal = new THREE.Vector3(0, 0.47, -30);
 
     // coque ≈ 6,5 u de base -> /6.5 = exactement 1 u = 100 m (référence d'échelle)
     model.scale.setScalar(SHIP.size / 6.5);
