@@ -303,8 +303,11 @@ function newGame() {
 // ---- bouton caméra (à côté du bouton musique) + touche V : poursuite <-> cockpit ----
 const camBtn = document.getElementById("camBtn");
 function refreshCamBtn() {
-  if (!camBtn) return;
   const cockpit = SETTINGS.view === "cockpit";
+  // en vue cockpit, le HUD DOM du bas s'efface : le tableau de bord 3D
+  // (MFD vitesse/radar/systèmes) prend le relais — plus de superpositions
+  document.body.classList.toggle("cockpit-view", cockpit);
+  if (!camBtn) return;
   camBtn.classList.toggle("cockpit", cockpit);
   camBtn.textContent = cockpit ? "◉" : "◎";
   camBtn.setAttribute("aria-label", cockpit ? "Vue poursuite" : "Vue cockpit");

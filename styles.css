@@ -573,6 +573,30 @@ body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
 .jr-g{font-size:11.5px;color:#a7c0e4;line-height:1.42;font-style:italic}
 .jr-empty{text-align:center;color:#9bb3d6;font-size:13px;line-height:1.7;margin:14px 0}
 
+/* ===================================================================
+   VUE COCKPIT — le tableau de bord 3D (MFD) remplace les instruments
+   DOM du bas de l'écran : on masque les doublons et on remonte les
+   éléments narratifs pour ne JAMAIS recouvrir la console.
+   =================================================================== */
+body.cockpit-view #telemetry,
+body.cockpit-view #statusWidget,
+body.cockpit-view #radar { display:none !important }
+/* sous-titres radio : en bandeau HAUT, sous les panneaux mission/journal */
+body.cockpit-view #comms { bottom:auto; top:128px }
+body.cockpit-view #comms.show { transform:translate(-50%,0) }
+/* invite de mission : juste AU-DESSUS de la casquette de console */
+body.cockpit-view #prompt { bottom:36% }
+/* toasts : décalés pour ne pas croiser les sous-titres remontés */
+body.cockpit-view #toast { top:60px }
+/* boutons caméra + musique : rangés dans le coin (place du radar masqué) */
+body.cockpit-view #musicBtn { bottom:20px; right:20px }
+body.cockpit-view #camBtn { bottom:72px; right:20px }
+@media (max-width:780px){
+  body.cockpit-view #comms { top:150px }
+  body.cockpit-view #musicBtn { top:auto; bottom:20px; right:20px }
+  body.cockpit-view #camBtn { top:auto; bottom:66px; right:20px }
+}
+
 /* ---------- Mode libre : pas d'histoire, HUD épuré ---------- */
 body.free-mode #missionPanel,
 body.free-mode #logPanel,
