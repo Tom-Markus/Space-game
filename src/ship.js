@@ -141,6 +141,34 @@ export class Ship {
       const c = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.06, 0.42), dark);
       c.position.set(s * 0.5, 0.02, -2.25); c.rotation.y = -s * 0.28; model.add(c);
     }
+
+    // --- canons à plasma sous les ailes (tubes + bouche émissive) ---
+    this.muzzles = [];
+    for (const s of [-1, 1]) {
+      const mount = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.5), dark);
+      mount.position.set(s * 1.7, -0.16, 0.25); model.add(mount);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 1.6, 12), dark);
+      barrel.rotation.x = Math.PI / 2; barrel.position.set(s * 1.7, -0.16, -0.45); model.add(barrel);
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 16), hull);
+      collar.position.set(s * 1.7, -0.16, -0.95); model.add(collar);
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 10), this.glow.clone());
+      tip.rotation.x = Math.PI / 2; tip.position.set(s * 1.7, -0.16, -1.27); model.add(tip);
+      const muzzle = new THREE.Object3D();                 // point d'émission des bolts
+      muzzle.position.set(s * 1.7, -0.16, -1.4); model.add(muzzle);
+      this.muzzles.push(muzzle);
+    }
+
+    // --- détails de coque : antenne, blocs RCS, arête dorsale ---
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.5, 6), dark);
+    mast.position.set(0.16, 0.5, 0.4); model.add(mast);
+    const mastTip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), trim);
+    mastTip.position.set(0.16, 0.76, 0.4); model.add(mastTip);
+    for (const [sx, sy] of [[-0.3, 0.28], [0.3, 0.28], [-0.3, -0.3], [0.3, -0.3]]) {
+      const rcs = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.16), dark);
+      rcs.position.set(sx, sy, -2.05); model.add(rcs);     // tuyères d'attitude au nez
+    }
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 2.6), hull);
+    spine.position.set(0, 0.47, 0.35); model.add(spine);   // arête dorsale
     // dérive dorsale
     const fin = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.7, 0.95), dark);
     fin.position.set(0, 0.5, 1.65); fin.rotation.x = -0.16; model.add(fin);
@@ -184,9 +212,49 @@ export class Ship {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: nozTex, color: 0x66ddff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.position.set(0, -0.05, 2.6); model.add(halo); this.halo = halo;
 
+    // --- cockpit intérieur (visible uniquement en vue pilote) ---
+    // L'œil est à (0, 0.52, -1.02) : tout l'habitacle est placé DEVANT lui.
+    const cp = new THREE.Group(); this.cockpit = cp;
+    const dashMat = new THREE.MeshStandardMaterial({ color: 0x11161f, metalness: 0.2, roughness: 0.8, emissive: 0x0c1018, emissiveIntensity: 0.8 });
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.13, 0.36), dashMat);
+    dash.position.set(0, 0.245, -1.72); dash.rotation.x = 0.32; cp.add(dash);
+    // écrans du tableau de bord (lueur discrète, cyan et ambre)
+    const scr1 = new THREE.Mesh(new THREE.PlaneGeometry(0.20, 0.055),
+      new THREE.MeshBasicMaterial({ color: 0x17607c, toneMapped: false }));
+    scr1.position.set(-0.13, 0.316, -1.655); scr1.rotation.x = -1.18; cp.add(scr1);
+    const scr2 = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.055),
+      new THREE.MeshBasicMaterial({ color: 0x7c5a1e, toneMapped: false }));
+    scr2.position.set(0.15, 0.316, -1.655); scr2.rotation.x = -1.18; cp.add(scr2);
+    // arceau de verrière + montants latéraux (cadre visible autour du champ de vue)
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x1a2029, metalness: 0.4, roughness: 0.6, emissive: 0x11161f, emissiveIntensity: 0.9 });
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(0.40, 0.030, 8, 24, Math.PI), archMat);
+    arch.position.set(0, 0.42, -1.30); cp.add(arch);
+    const arch2 = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.026, 8, 24, Math.PI), archMat);
+    arch2.position.set(0, 0.40, -1.62); cp.add(arch2);
+    for (const s of [-1, 1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.62), archMat);
+      rail.position.set(s * 0.40, 0.47, -1.42); cp.add(rail);
+      const console_ = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.09, 0.5), dashMat);
+      console_.position.set(s * 0.30, 0.235, -1.52); cp.add(console_);
+    }
+    cp.visible = false;
+    model.add(cp);
+    // œil du pilote + point regardé (repère du MODÈLE : suit l'inclinaison en virage)
+    this._eyeLocal = new THREE.Vector3(0, 0.52, -1.02);
+    this._lookLocal = new THREE.Vector3(0, 0.44, -30);
+
     // coque ≈ 6,5 u de base -> /6.5 = exactement 1 u = 100 m (référence d'échelle)
     model.scale.setScalar(SHIP.size / 6.5);
     this.group.add(model);
+    this.setView(SETTINGS.view === "cockpit" ? "cockpit" : "chase");
+  }
+
+  // Vue « chase » (3ᵉ personne) ou « cockpit » (dans la verrière).
+  setView(mode) {
+    this.view = mode === "cockpit" ? "cockpit" : "chase";
+    const chase = this.view === "chase";
+    for (const child of this.model.children) child.visible = chase;
+    this.cockpit.visible = !chase;
   }
 
   reset(pos, lookTarget) {
@@ -312,6 +380,25 @@ export class Ship {
 
   updateCamera(dt, camera) {
     const g = this.group; g.updateMatrixWorld();
+
+    // ---- vue cockpit : caméra rigide à l'œil du pilote ----
+    if (this.view === "cockpit") {
+      camera.position.copy(this._eyeLocal).applyMatrix4(this.model.matrixWorld);
+      this._prevPos.copy(g.position);            // garde le suivi 3ᵉ personne cohérent au retour
+      if (this.warpAmount > 0.05) {
+        const a = this.warpAmount * 0.05;
+        camera.position.x += (Math.random() - 0.5) * a;
+        camera.position.y += (Math.random() - 0.5) * a;
+      }
+      const look = this._look.copy(this._lookLocal).applyMatrix4(this.model.matrixWorld);
+      this._up.set(0, 1, 0).transformDirection(this.model.matrixWorld);   // l'horizon s'incline avec le virage
+      camera.up.copy(this._up);
+      camera.lookAt(look);
+      const cfov = this._baseFov + 3 + Math.min(Math.abs(this.speed) / SHIP.boostMax, 1) * 7 + this.warpAmount * 24;
+      if (Math.abs(camera.fov - cfov) > 0.05) { camera.fov = cfov; camera.updateProjectionMatrix(); }
+      return;
+    }
+
     // suivi RIGIDE du déplacement (sans retard, même en distorsion) ...
     camera.position.add(this._camTmp.copy(g.position).sub(this._prevPos));
     this._prevPos.copy(g.position);

@@ -238,14 +238,17 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--accent);background:rgba(6,13,28,.8);
   border:1px solid var(--brd);border-radius:6px;padding:2px 8px;pointer-events:none;white-space:nowrap}
 
-/* bouton musique : juste à côté de la mini-carte (à sa gauche, pour rester à l'écran） */
-#musicBtn{position:fixed;bottom:74px;right:186px;width:44px;height:44px;border-radius:50%;
+/* boutons musique + caméra : juste à côté de la mini-carte (pour rester à l'écran） */
+#musicBtn,#camBtn{position:fixed;bottom:74px;right:186px;width:44px;height:44px;border-radius:50%;
   z-index:21;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at 50% 42%,rgba(10,26,44,.78),rgba(4,9,20,.82));
   border:1px solid var(--brd);color:var(--accent);font-size:19px;line-height:1;padding:0;
   box-shadow:0 4px 22px rgba(0,8,24,.5),inset 0 0 16px rgba(40,120,200,.12);transition:transform .15s,filter .15s,border-color .15s}
-#musicBtn:hover{transform:scale(1.07);border-color:var(--brd-hi);filter:drop-shadow(0 0 9px rgba(98,216,255,.5))}
-#musicBtn:active{transform:scale(.96)}
+#musicBtn:hover,#camBtn:hover{transform:scale(1.07);border-color:var(--brd-hi);filter:drop-shadow(0 0 9px rgba(98,216,255,.5))}
+#musicBtn:active,#camBtn:active{transform:scale(.96)}
+#camBtn{bottom:126px}
+#camBtn.cockpit{color:#ffd27a;border-color:rgba(255,194,77,.5);
+  box-shadow:0 4px 22px rgba(0,8,24,.5),inset 0 0 16px rgba(255,180,70,.15)}
 #musicBtn.muted{color:#6b7b95;border-color:rgba(120,150,180,.3)}
 /* barre rouge en diagonale quand le son est coupé */
 #musicBtn.muted::after{content:"";position:absolute;top:50%;left:50%;width:30px;height:2.5px;border-radius:2px;
@@ -307,6 +310,7 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   font-size:13px;font-weight:700;letter-spacing:.05em;touch-action:none}
 .tbtn.act{background:rgba(98,216,255,.4);font-size:22px}
 .tbtn.warp{background:linear-gradient(90deg,#5a7bff,#b06bff);color:#fff}
+.tbtn.fire{background:linear-gradient(90deg,#c64a2b,#ff8a3c);color:#fff}
 .tbtn:active{filter:brightness(1.3)}
 
 @media (max-width:780px){
@@ -314,6 +318,7 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
   #logPanel{display:none}
   #radar{width:104px;height:104px;bottom:auto;top:10px;right:10px}
   #musicBtn{bottom:auto;top:30px;right:124px;width:40px;height:40px;font-size:17px}
+  #camBtn{bottom:auto;top:30px;right:168px;width:40px;height:40px;font-size:17px}
   #telemetry{bottom:auto;top:120px;gap:10px;padding:7px 12px;transform:translateX(-50%) scale(.86)}
   #help{display:none !important}
   .corner{display:none}
@@ -543,6 +548,7 @@ body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
   #radar{width:92px;height:92px;top:8px;right:8px;bottom:auto}
   #radar::after{font-size:8px;padding:1px 6px}
   #musicBtn{top:10px;right:108px;bottom:auto;width:38px;height:38px;font-size:16px}
+  #camBtn{top:10px;right:152px;bottom:auto;width:38px;height:38px;font-size:16px}
   /* rangée 2 : télémétrie (gauche) · coque/bouclier (droite) */
   #telemetry{left:8px;top:118px;bottom:auto;transform:none;gap:9px;padding:6px 11px;max-width:60vw}
   #telemetry .tele-near{display:none}

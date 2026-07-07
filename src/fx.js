@@ -205,6 +205,7 @@ export class LensFlare {
 // ------------------------------------------------------------------
 //  Champs de roches locaux : hachage de grille déterministe.
 //  Régions : ceinture principale, Kuiper, anneaux de Saturne.
+//  Les astéroïdes sont destructibles (canons à plasma, cf. weapons.js).
 // ------------------------------------------------------------------
 function hash3(x, y, z) {
   let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0;
@@ -213,49 +214,88 @@ function hash3(x, y, z) {
   return (h >>> 0) / 4294967295;             // [0,1)
 }
 
-const ROCK_MAX = 240;                          // instances simultanées max
+// Géométrie d'astéroïde : icosaèdre déformé par une somme de lobes sinusoïdaux
+// (grosses bosses lisses) + cratères d'impact creusés, rendu en flat shading
+// -> silhouette anguleuse et facettée, façon 253 Mathilde / 951 Gaspra.
+function makeRockGeo(seed, detail) {
+  const geo = new THREE.IcosahedronGeometry(1, detail);
+  const gp = geo.attributes.position;
+  const v = new THREE.Vector3();
+  const s1 = 1.7 + (seed % 5) * 0.53, s2 = 2.9 + (seed % 3) * 0.77, s3 = 4.3 + (seed % 7) * 0.31;
+  // cratères : quelques directions aléatoires, creusées en cuvette
+  const craters = [];
+  for (let i = 0; i < 5 + (seed % 3); i++) {
+    const a = hash3(seed, i * 17, 3) * Math.PI * 2, b = Math.acos(hash3(seed, i * 31, 7) * 2 - 1);
+    craters.push({
+      dir: new THREE.Vector3(Math.sin(b) * Math.cos(a), Math.cos(b), Math.sin(b) * Math.sin(a)),
+      size: 0.75 + hash3(seed, i, 11) * 0.18,      // cos(θ) au bord du cratère
+      depth: 0.10 + hash3(seed, i, 13) * 0.16,
+    });
+  }
+  for (let i = 0; i < gp.count; i++) {
+    v.fromBufferAttribute(gp, i);
+    // lobes lisses (3 fréquences) -> patatoïde irrégulier
+    let r = 1
+      + 0.26 * Math.sin(v.x * s1 + seed) * Math.sin(v.y * s1 * 0.8 + seed * 2.1)
+      + 0.14 * Math.sin(v.y * s2 + seed * 3.7) * Math.sin(v.z * s2 * 1.1 + seed)
+      + 0.07 * Math.sin(v.z * s3 + seed * 1.3) * Math.sin(v.x * s3 * 0.9 + seed * 5.2);
+    // cratères en cuvette douce
+    for (const c of craters) {
+      const d = v.dot(c.dir);
+      if (d > c.size) {
+        const t = (d - c.size) / (1 - c.size);        // 0 au bord -> 1 au centre
+        r -= c.depth * t * t * (3 - 2 * t);
+      }
+    }
+    v.multiplyScalar(Math.max(0.45, r));
+    gp.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
 
 export class LocalRocks {
   // regions : [{ name, contains(pos)->bool, cell, prob, sizeMin, sizeMax, color }]
-  constructor(scene, regions) {
+  // opts    : { range (cellules), max (instances), detail (subdivision géométrie) }
+  //           -> pilotés par la qualité choisie (2K/4K/8K = distance de rendu)
+  constructor(scene, regions, opts = {}) {
     this.regions = regions;
+    this.range = opts.range || 8;
+    this.max = opts.max || 256;
     this.activeRegion = null;                  // exposé (barks d'ARIA)
+    this.destroyed = new Set();                // cellules dont la roche a été détruite
+    this.list = [];                            // roches courantes { key, x,y,z, r } (cibles de tir)
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
     this._s = new THREE.Vector3();
     this._p = new THREE.Vector3();
     this._e = new THREE.Euler();
-    this._acc = 0;
-
-    // roche : icosaèdre bosselé (déplacement radial pseudo-aléatoire des sommets)
-    const geo = new THREE.IcosahedronGeometry(1, 2);
-    const gp = geo.attributes.position;
-    const v = new THREE.Vector3();
-    for (let i = 0; i < gp.count; i++) {
-      v.fromBufferAttribute(gp, i);
-      const n = 0.72 + hash3((v.x * 91) | 0, (v.y * 137) | 0, (v.z * 53) | 0) * 0.55;
-      v.multiplyScalar(n);
-      gp.setXYZ(i, v.x, v.y, v.z);
-    }
-    geo.computeVertexNormals();
     this._c = new THREE.Color();
+    this._acc = 1;                             // premier passage immédiat
+
+    // 3 variantes de géométrie (variété des silhouettes), flat shading
+    const detail = opts.detail ?? 3;
+    this.meshes = [];
+    for (let vI = 0; vI < 3; vI++) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.97, metalness: 0.03, flatShading: true });
+      const m = new THREE.InstancedMesh(makeRockGeo(vI * 47 + 13, detail), mat, this.max);
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      m.count = 0;
+      m.frustumCulled = false;
+      scene.add(m);
+      this.meshes.push(m);
+    }
+
     // offsets de cellules TRIÉS par distance : quand le plafond d'instances est
     // atteint, ce sont les cellules LOINTAINES qu'on abandonne (jamais celles
     // sous le nez du joueur) -> distribution isotrope autour de la caméra.
-    const RANGE = 6;
+    const R = this.range;
     this._offsets = [];
-    for (let x = -RANGE; x <= RANGE; x++)
-      for (let y = -RANGE; y <= RANGE; y++)
-        for (let z = -RANGE; z <= RANGE; z++)
-          if (x * x + y * y + z * z <= RANGE * RANGE) this._offsets.push([x, y, z]);
+    for (let x = -R; x <= R; x++)
+      for (let y = -R; y <= R; y++)
+        for (let z = -R; z <= R; z++)
+          if (x * x + y * y + z * z <= R * R) this._offsets.push([x, y, z]);
     this._offsets.sort((a, b) => (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) - (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]));
-    // blanc : la teinte réelle vient de la couleur PAR INSTANCE (selon la région)
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0.04 });
-    this.mesh = new THREE.InstancedMesh(geo, mat, ROCK_MAX);
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.count = 0;
-    this.mesh.frustumCulled = false;
-    scene.add(this.mesh);
   }
 
   update(dt, camPos) {
@@ -267,34 +307,130 @@ export class LocalRocks {
     let region = null;
     for (const r of this.regions) if (r.contains(camPos)) { region = r; break; }
     this.activeRegion = region;
-    if (!region) { this.mesh.count = 0; return; }
+    if (!region) {
+      if (this.list.length) { this.list.length = 0; for (const m of this.meshes) m.count = 0; }
+      return;
+    }
 
     const cell = region.cell;
     const cx = Math.floor(camPos.x / cell), cy = Math.floor(camPos.y / cell), cz = Math.floor(camPos.z / cell);
-    let n = 0;
+    for (const m of this.meshes) m.count = 0;    // reconstruction complète à chaque passe
+    let total = 0;
+    this.list.length = 0;
     for (const [ox, oy, oz] of this._offsets) {
-      if (n >= ROCK_MAX) break;
+      if (total >= this.max) break;         // plafond GLOBAL (toutes variantes confondues)
       const ix = cx + ox, iy = cy + oy, iz = cz + oz;
       const h = hash3(ix, iy, iz);
       if (h > region.prob) continue;
+      const key = region.name + ":" + ix + "," + iy + "," + iz;
+      if (this.destroyed.has(key)) continue;
       // position déterministe dans la cellule
       const fx = hash3(ix + 71, iy, iz), fy = hash3(ix, iy + 37, iz), fz = hash3(ix, iy, iz + 113);
       this._p.set((ix + fx) * cell, (iy + fy) * cell, (iz + fz) * cell);
       if (!region.contains(this._p)) continue;
+      const variant = (h * 3 / region.prob) | 0;
+      const mesh = this.meshes[Math.min(2, variant)];
+      if (mesh.count >= this.max) continue;
       const size = region.sizeMin + hash3(ix + 5, iy + 9, iz + 3) * (region.sizeMax - region.sizeMin);
       this._e.set(fx * 6.28, fy * 6.28, fz * 6.28);
       this._q.setFromEuler(this._e);
-      this._s.set(size * (0.7 + fx * 0.6), size * (0.7 + fy * 0.6), size * (0.7 + fz * 0.6));
+      this._s.set(size * (0.75 + fx * 0.5), size * (0.75 + fy * 0.5), size * (0.75 + fz * 0.5));
       this._m.compose(this._p, this._q, this._s);
-      this.mesh.setMatrixAt(n, this._m);
+      const n = mesh.count;
+      mesh.setMatrixAt(n, this._m);
       this._c.setHex(region.color || 0x8d8578).multiplyScalar(0.72 + fx * 0.55);
-      this.mesh.setColorAt(n, this._c);
-      n++;
+      mesh.setColorAt(n, this._c);
+      mesh.count = n + 1;
+      total++;
+      this.list.push({ key, x: this._p.x, y: this._p.y, z: this._p.z, r: size * 1.25 });
     }
-    this.mesh.count = n;
-    if (n) {
-      this.mesh.instanceMatrix.needsUpdate = true;
-      if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    for (const m of this.meshes) {
+      if (m.count) {
+        m.instanceMatrix.needsUpdate = true;
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      }
+    }
+  }
+
+  // Impact d'un tir : segment (a -> b, rayon élargi rr). Détruit la roche touchée.
+  // Renvoie la roche ({x,y,z,r}) ou null.
+  tryBoltHit(a, b, rr) {
+    for (const rock of this.list) {
+      const R = rock.r + rr;
+      // distance point-segment (au carré)
+      const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+      const apx = rock.x - a.x, apy = rock.y - a.y, apz = rock.z - a.z;
+      const ab2 = abx * abx + aby * aby + abz * abz;
+      let t = ab2 > 0 ? (apx * abx + apy * aby + apz * abz) / ab2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
+      if (dx * dx + dy * dy + dz * dz < R * R) {
+        this.destroyed.add(rock.key);
+        this._acc = 1;                       // re-matérialise immédiatement (sans la roche)
+        return rock;
+      }
+    }
+    return null;
+  }
+}
+
+// ------------------------------------------------------------------
+//  Explosions : flash additif + éclats projetés, en pool réutilisable.
+// ------------------------------------------------------------------
+const EXPLO_MAX = 10;
+const SPARKS = 7;
+
+export class Explosions {
+  constructor(scene) {
+    this.pool = [];
+    for (let i = 0; i < EXPLO_MAX; i++) {
+      const grp = new THREE.Group();
+      const core = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: discTexture(), color: 0xffd9a0, transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      grp.add(core);
+      const sparks = [];
+      for (let k = 0; k < SPARKS; k++) {
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: discTexture(), color: 0xffb060, transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        }));
+        s.userData.dir = new THREE.Vector3().randomDirection();
+        grp.add(s);
+        sparks.push(s);
+      }
+      grp.visible = false;
+      scene.add(grp);
+      this.pool.push({ grp, core, sparks, t: 1e9, size: 1 });
+    }
+    this._next = 0;
+  }
+
+  spawn(pos, size) {
+    const e = this.pool[this._next];
+    this._next = (this._next + 1) % EXPLO_MAX;
+    e.grp.position.copy(pos);
+    e.grp.visible = true;
+    e.t = 0;
+    e.size = size;
+    for (const s of e.sparks) { s.position.set(0, 0, 0); s.userData.dir.randomDirection(); }
+  }
+
+  update(dt) {
+    for (const e of this.pool) {
+      if (e.t > 0.9) { if (e.grp.visible) e.grp.visible = false; continue; }
+      e.t += dt;
+      const t = Math.min(1, e.t / 0.65);
+      const fade = 1 - t;
+      e.core.material.opacity = fade * fade;
+      e.core.scale.setScalar(e.size * (0.5 + t * 1.7));
+      e.core.material.color.setHSL(0.09 - t * 0.05, 1, 0.75 - t * 0.3);
+      for (const s of e.sparks) {
+        s.position.copy(s.userData.dir).multiplyScalar(e.size * t * 3.2);
+        s.scale.setScalar(e.size * 0.28 * fade);
+        s.material.opacity = fade;
+      }
     }
   }
 }

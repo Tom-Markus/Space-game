@@ -32,10 +32,24 @@ Bonus : 4 **planètes naines** explorables — Cérès, Hauméa, Makémaké, Ér
 - **Poussière de vitesse** enveloppant la caméra : le vide « défile » enfin en croisière,
   et s'étire en **traînées d'étoiles 3D** à la distorsion.
 - **Ceintures d'astéroïdes** (principale + Kuiper) : voile de particules au loin, et
-  **vrais rochers instanciés** qui se matérialisent autour de vous quand vous les traversez —
-  y compris **dans les anneaux de Saturne**. ARIA les commente à l'entrée.
+  **vrais astéroïdes** (3 silhouettes cratérisées, flat shading, espacement naturel) qui se
+  matérialisent autour de vous quand vous les traversez — y compris **dans les anneaux de
+  Saturne**. La **distance de rendu suit la qualité choisie** (2K ≈ 6 300 km · 4K ≈ 8 500 km ·
+  8K ≈ 11 000 km). ARIA les commente à l'entrée… et ils sont **destructibles**.
 - **Inclinaison en virage** : le vaisseau se penche dans les courbes (la caméra reste stable).
 - Départ **côté jour** : la première image du jeu est un lever de Terre éclairé.
+
+### 🔫 Canons à plasma & vue cockpit
+
+- **Deux canons à plasma** sous les ailes (clic gauche, **F**, manette **X**, bouton TIR en
+  tactile) : traceurs, flashs de bouche, explosions. Pulvérisez les astéroïdes pour le
+  plaisir — et détruisez les **balises de quarantaine de Jupiter**, une mission de combat
+  entière où le fragment est verrouillé par… quelque chose qui connaît Pionnier de très près.
+- **Vue cockpit** : bouton ◎ à côté du bouton musique (ou touche **V**) pour basculer entre
+  la 3ᵉ personne et l'habitacle — verrière, arceaux, tableau de bord, et l'horizon qui
+  s'incline avec le vaisseau.
+- **GPS d'objectif précis** : le marqueur de mission pointe la **source / l'éclat / la balise**
+  à atteindre (avec compteur), pas seulement la planète.
 
 ## 📐 Échelle — à taille réelle
 
@@ -77,9 +91,11 @@ L'horizon se **stabilise automatiquement** (anti-nausée) : pas de roulis à gé
 | Action | Touche |
 |---|---|
 | Orienter le vaisseau | **Souris** (curseur verrouillé) |
+| **TIR — canons à plasma** | **Clic gauche** (ou **F**) |
 | Accélérer / Ralentir-reculer | **Z/W** / **S** |
 | Postcombustion | **Maj** |
 | **Distorsion (super-boost)** | **Espace** (maintenir) |
+| Vue cockpit / poursuite | **V** |
 | Journal du signal | **J** |
 | Orienter (alternatif) | **Flèches** |
 | Carte du système / Aide / Pause | **M** / **H** / **Échap** |
@@ -123,8 +139,9 @@ Fini le « maintien E » : chaque mission a sa **mécanique**, et des **dangers*
 
 | Mécanique | En quoi ça consiste | Exemples |
 |---|---|---|
-| **Verrouillage** | Approchez la source du signal et **orientez le nez** dessus pour remplir l'anneau de verrouillage | Terre, Vénus, Mercure, Jupiter, Uranus, Neptune, Pluton |
+| **Verrouillage** | Approchez la source du signal et **orientez le nez** dessus pour remplir l'anneau de verrouillage | Terre, Vénus, Mercure, Uranus, Neptune, Pluton |
 | **Collecte d'éclats** | Volez **à travers** des éclats de données dispersés pour les capter | Mars (glace), Saturne (anneaux) |
+| **Destruction** | **Abattez au canon** les balises de quarantaine en orbite | Jupiter |
 | **Appontage** | Posez-vous **en douceur** (vitesse + altitude faibles) | Lune |
 
 | Danger | Effet |
@@ -145,8 +162,9 @@ src/
   scene.js          renderer, caméra, post-traitement (bloom)
   bodies.js         Soleil (shader animé), planètes, Lune, anneaux, atmosphères, étoiles
   fx.js             ★ immersion : poussière de vitesse, traînées warp, lens flare,
-                      champs de roches locaux (ceintures, anneaux de Saturne)
-  ship.js           vaisseau (modèle + physique de vol + inclinaison + caméra 3ᵉ personne)
+                      astéroïdes locaux destructibles (ceintures, anneaux), explosions
+  weapons.js        canons à plasma : traceurs, flashs, détection d'impact
+  ship.js           vaisseau (modèle + cockpit + physique de vol + caméras chase/cockpit)
   input.js          clavier / souris / tactile / manette
   settings.js       préférences (sensibilité, inversion Y) persistées
   starmap.js        carte du système plein écran (cap de navigation)

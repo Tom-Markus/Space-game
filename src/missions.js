@@ -15,6 +15,7 @@ export class Missions {
     ctx = ctx || {};
     this.status = ctx.status; this.scene = ctx.scene; this.onFx = ctx.onFx || (() => {});
     this.onAct = ctx.onAct || (() => {});
+    this.onBoom = ctx.onBoom || (() => {});
     this._lastAct = 0;
     this.list = CAMPAIGN_ORDER
       .map((k) => PLANETS.find((p) => p.key === k))
@@ -55,7 +56,7 @@ export class Missions {
     const adef = ACTIVITIES[m.key] || { type: "lock" };
     this.activity = makeActivity(adef, {
       scene: this.scene, system: this.system, key: m.key, body,
-      sfx: this.sfx, status: this.status, onFx: this.onFx,
+      sfx: this.sfx, status: this.status, onFx: this.onFx, onBoom: this.onBoom,
     });
     // Le marqueur de cap (rectangle orange) n'apparaît qu'une fois le briefing
     // terminé — ARIA présente d'abord l'astre, ensuite seulement on le pointe.

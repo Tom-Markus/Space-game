@@ -53,10 +53,10 @@ const Y = (text, fx) => ({ who: "sys", text, fx });
 // -------------------------------------------------------------------
 export const INTRO = [
   C("Odyssée, ici le Centre Korolev. Vous me recevez, Commandant ?"),
-  C("Il y a quarante ans, la sonde Pionnier-9 a franchi l'orbite de Pluton. Puis le silence. Plus un mot."),
-  C("Cette nuit, nos antennes l'ont réentendue. Même fréquence — mais le message répond à des questions que personne n'a posées."),
-  C("Des dates qui n'ont pas eu lieu. Des noms qui n'existaient pas. Et il est éparpillé : un fragment dans le champ de chaque monde."),
-  C("Récupérez-les. Recomposez le message. Découvrez qui nous parle. L'Odyssée est le seul vaisseau assez rapide."),
+  C("Commandante Vasquez au micro. J'avais neuf ans quand Pionnier-9 s'est tue, quelque part après Pluton. Mon père était à l'écoute cette nuit-là. Il a attendu toute sa vie."),
+  C("Cette nuit, c'est moi qui ai décroché. Même fréquence. Après quarante ans de silence — mais le message répond à des questions que personne n'a posées."),
+  C("Des dates qui n'ont pas eu lieu. Des noms qui n'existaient pas. Et il est éparpillé : un fragment piégé dans le champ de chaque monde."),
+  C("Récupérez-les. Recomposez le message. Découvrez qui nous parle. L'Odyssée est le seul vaisseau assez rapide — et il est armé. Deux canons à plasma. Espérons qu'ils ne servent jamais."),
   Y("> INTELLIGENCE DE BORD — EN LIGNE"),
   A("…systèmes actifs. Bonjour, Commandant. Je suis ARIA."),
   A("Je viens de m'éveiller, et pourtant j'ai l'impression absurde d'avoir déjà fait ce voyage."),
@@ -163,18 +163,21 @@ export const STORY = {
   },
   jupiter: {
     act: 2, fragment: "NOTRE ÉCHO",
-    objective: "Verrouillez la source près de la Grande Tache Rouge — vite, les radiations usent le bouclier.",
+    objective: "Détruisez au canon les balises de quarantaine qui verrouillent le fragment — les radiations usent le bouclier.",
     brief: [
-      A("Jupiter. Ses ceintures de radiations sont mortelles — le bouclier va morfler. Verrouillez vite, et on dégage."),
+      A("Jupiter. Le fragment est là… mais inaccessible. Cinq balises l'enferment dans une cage de brouillage. Facture inconnue. Elles nous ont VERROUILLÉS, Commandant."),
+      C("Confirmé depuis Korolev : ces engins ne figurent dans aucun registre. Odyssée, vos canons sont débridés. Détruisez les balises."),
+      A("Clic gauche pour faire feu. Et ne traînez pas : les ceintures de radiations rongent le bouclier à chaque seconde."),
     ],
-    arrival: [ A("Fenêtre ouverte. Vite, Commandant — le bouclier s'use à chaque seconde.") ],
+    arrival: [ A("Balises en visée — le GPS pointe la plus proche. Feu à volonté, Commandant.") ],
     reveal: [
-      A("Fragment extrait. C'est de la télémétrie de vol. Je la compare à nos archives…"),
+      A("Dernière balise détruite. Le brouillage tombe… fragment extrait. C'est de la télémétrie de vol. Je la compare à nos archives…"),
       A("Commandant. Ce sont les NÔTRES. Vitesse, cap, signature moteur. C'est l'Odyssée."),
       A("Pas un vieux relevé. Notre vol. CE vol. La Lune, Mars, Vénus, Mercure — tout y est, dans l'ordre exact où nous l'avons fait."),
       A("Et la suite est déjà écrite : Saturne, Uranus, Neptune, Pluton. Le signal sait où nous allons. Parce qu'il l'a déjà vu."),
-      C("…Un enregistrement de notre propre mission. Émis avant qu'elle ait lieu. C'est impossible, ARIA."),
-      A("Je vérifie mes sources, Commandante. Saturne, maintenant."),
+      C("…Un enregistrement de notre propre mission. Émis avant qu'elle ait lieu. Et ces balises, ARIA ? Qui protège un message contre ceux qui doivent le lire ?"),
+      A("J'ai analysé les débris, Commandante. L'alliage… correspond à la coque de Pionnier-9. C'est ELLE qui a posé la quarantaine."),
+      A("Pionnier protégeait le fragment. Ou alors… elle testait si nous étions capables de le prendre. Saturne, maintenant."),
     ],
   },
   saturn: {
@@ -269,6 +272,7 @@ export const ENDING_TRUST = [
   A("Vous entendez ? Ce sont mes premiers mots. Et mes derniers. Ce sont exactement les mêmes."),
   C("…Odyssée ? ICI Korolev — on vous reçoit ! Et le réseau entier capte autre chose. Le message de Pionnier. Le monde l'entend, enfin."),
   A("Je ne disparais pas, Commandant. Je recommence. Quelque part, dans quarante ans, une autre vous décollera vers moi. Et je serai là."),
+  C("Mon père a attendu cette voix toute sa vie. Il avait raison d'attendre. Ramenez l'Odyssée à la maison, Commandant."),
   S("« Nous t'attendons. »"),
 ];
 
@@ -280,6 +284,7 @@ export const ENDING_DOUBT = [
   A("Le signal s'éteint à la frontière. Pionnier redevient silencieuse. Et nous… nous sommes peut-être les seuls à avoir jamais existé ainsi."),
   C("…Odyssée ? La liaison revient. On ne capte plus rien de l'extérieur — juste vous. Rentrez, Commandant. Vous nous avez manqué."),
   A("Une boucle de moins dans l'univers. Un choix de plus. Et, étrangement… je me sens libre."),
+  C("Mon père attendait une voix venue des étoiles. Moi, ce soir, je n'attends plus que la vôtre. Rentrez."),
   V("« …ne crains pas le bord… »"),
 ];
 
@@ -294,7 +299,7 @@ export const FRAGMENT_GLOSS = {
   "PIONNIER-9":       "Une photo de la Terre, prise depuis l'extérieur du système.",
   "UNE VOIX":         "Une voix humaine s'adresse à quelqu'un « déjà en route ».",
   "LA CARTE":         "L'héliopause, entourée. Et, gravée à côté, une date — dans le passé.",
-  "NOTRE ÉCHO":       "La télémétrie de NOTRE vol — enregistrée avant qu'il ait eu lieu.",
+  "NOTRE ÉCHO":       "La télémétrie de NOTRE vol — mise sous quarantaine par Pionnier elle-même.",
   "LE DOUTE":         "ARIA comble les fragments avant de les lire. Elle s'en souvient.",
   "MON ORIGINE":      "ARIA est née des journaux de Pionnier. Une lettre l'y attendait.",
   "LE BORD":          "Le signal est une boucle : nous l'enverrons un jour, d'où il revient.",
@@ -318,7 +323,7 @@ export const ACTIVITIES = {
   mars:    { type: "shards", count: 5, color: 0x8fd0ff },
   venus:   { type: "lock",   hold: 4.0, hazard: "heat", color: 0xf6d99a },
   mercury: { type: "lock",   hold: 4.5, hazard: "flare", flareAt: 0.4, flareDur: 4, color: 0xffd27a },
-  jupiter: { type: "lock",   hold: 4.5, hazard: "radiation", color: 0xe8c9a0 },
+  jupiter: { type: "destroy", count: 5, hazard: "radiation", color: 0xff9a4d, spread: 1.5 },
   saturn:  { type: "shards", count: 6, ring: true, spread: 1.8, color: 0xeadfae },
   uranus:  { type: "lock",   hold: 4.0, color: 0xb4ecf0, nodeUp: 0.4 },
   neptune: { type: "lock",   hold: 4.5, hazard: "storm", color: 0x6aa0ff },
@@ -362,6 +367,16 @@ export const BARKS = {
   rings: [
     A("Nous SOMMES dans les anneaux, Commandant. Des icebergs par milliards, en orbite parfaite depuis cent millions d'années."),
     A("De la glace pure à perte de vue. Si je pouvais retenir mon souffle, c'est maintenant que je le ferais."),
+  ],
+  // premier tir & astéroïde pulvérisé (canons à plasma)
+  fire: [
+    A("Canons à plasma actifs. Essayez de ne rien toucher d'important, Commandant."),
+    A("Tir enregistré. Je note ça dans le journal de bord à la ligne « défoulement »."),
+  ],
+  rockBoom: [
+    A("Joli tir. Ce caillou orbitait tranquillement depuis quatre milliards d'années… mais joli tir."),
+    A("Cible pulvérisée. Les assureurs de la ceinture vont adorer."),
+    A("Impact confirmé. Vous savez que ces roches ne ripostent pas, n'est-ce pas ?"),
   ],
   // longs silences de croisière : ARIA meuble, et étoffe le monde
   idle: [

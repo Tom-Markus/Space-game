@@ -49,6 +49,8 @@ class Activity {
     this.scene = ctx.scene; this.system = ctx.system; this.key = ctx.key;
     this.body = ctx.body; this.sfx = ctx.sfx; this.status = ctx.status;
     this.onFx = ctx.onFx || (() => {});
+    this.onBoom = ctx.onBoom || (() => {});   // explosion (position, taille)
+    this.objectiveLabel = null;               // libellé du marqueur GPS (« Source », « Éclat »…)
     this.def = def || {};
     this.progress = 0; this.done = false; this.engaged = false; this.failed = false;
     this.prompt = null; this.lock = 0; this.t = 0;
@@ -65,6 +67,9 @@ class Activity {
   start() {}
   update() {}
   cleanup() { if (this.scene) for (const p of this._props) this.scene.remove(p); this._props.length = 0; }
+  // Position PRÉCISE de l'objectif courant (balise, éclat…) pour le marqueur GPS.
+  // Remplit `out` et renvoie true ; false -> repli sur le centre de la planète.
+  objectivePos(out, shipPos) { return false; }
 
   // danger commun : renvoie true si la coque vient de tomber (fail-soft géré ailleurs)
   applyHazard(dt, ship, bp) {
@@ -156,6 +161,12 @@ class LockActivity extends Activity {
     if (this.lock >= 1) { this.done = true; this.sfx && this.sfx.lock && this.sfx.lock(); }
     return fell;
   }
+  objectivePos(out) {
+    if (!this.nodePos || this.nodePos.lengthSq() === 0) return false;
+    this.objectiveLabel = "Source";
+    out.copy(this.nodePos);
+    return true;
+  }
 }
 
 // ---- COLLECTE : éclats de données dispersés ----
@@ -216,6 +227,18 @@ class ShardActivity extends Activity {
     if (this.collected >= this.n) this.done = true;
     return fell;
   }
+  objectivePos(out, shipPos) {
+    let best = null, bd = Infinity;
+    for (const sh of this.shards) {
+      if (sh.collected || sh.pos.lengthSq() === 0) continue;
+      const d = shipPos ? shipPos.distanceToSquared(sh.pos) : 0;
+      if (d < bd) { bd = d; best = sh; }
+    }
+    if (!best) return false;
+    this.objectiveLabel = `Éclat ${this.collected + 1}/${this.n}`;
+    out.copy(best.pos);
+    return true;
+  }
 }
 
 // ---- APPONTAGE : poser en douceur ----
@@ -251,7 +274,96 @@ class LandActivity extends Activity {
   }
 }
 
-const TYPES = { lock: LockActivity, shards: ShardActivity, land: LandActivity };
+// ---- DESTRUCTION : abattre les balises de quarantaine aux canons ----
+// Des pods blindés orbitent lentement la planète : il faut les DÉTRUIRE au
+// canon à plasma (clic gauche). Le GPS pointe toujours la plus proche.
+class DestroyActivity extends Activity {
+  start() {
+    this.n = this.def.count || 5;
+    this.destroyedN = 0;
+    this.spread = this.radius * (this.def.spread ?? 1.5);
+    this.orbitW = this.def.orbitW ?? 0.004;          // rad/s : dérive orbitale lente
+    this.targetSize = this.radius * (this.def.targetSize ?? 0.008);
+    this.targets = [];
+    for (let i = 0; i < this.n; i++) {
+      const t = {
+        a0: (i / this.n) * Math.PI * 2 + 0.9,
+        rr: this.spread * (0.92 + (i % 3) * 0.12),
+        y: this.radius * 0.35 * Math.sin(i * 2.3),
+        alive: true,
+        pos: new THREE.Vector3(),
+        mesh: null,
+      };
+      if (this.scene) {
+        t.mesh = makeBeacon(this.def.color || 0xff9a4d, this.targetSize);
+        this.scene.add(t.mesh); this._props.push(t.mesh);
+      }
+      this.targets.push(t);
+    }
+  }
+  update(dt, ship) {
+    this.t += dt;
+    const bp = this.bodyPos();
+    this.hazardLabel = null;
+    const fell = this.applyHazard(dt, ship, bp);
+    for (const tg of this.targets) {
+      if (!tg.alive) continue;
+      const a = tg.a0 + this.t * this.orbitW;
+      tg.pos.set(bp.x + Math.cos(a) * tg.rr, bp.y + tg.y, bp.z + Math.sin(a) * tg.rr);
+      if (tg.mesh) {
+        tg.mesh.position.copy(tg.pos);
+        const p = 0.8 + Math.sin(this.t * 5 + tg.a0 * 7) * 0.2;      // pulsation hostile
+        tg.mesh.userData.halo.material.opacity = p;
+        tg.mesh.userData.ring.rotation.x += dt * 2.2;
+        tg.mesh.userData.core.rotation.y += dt * 3;
+      }
+    }
+    this._sp.copy(ship.group.position);
+    if (this._sp.distanceTo(bp) - this.radius < this.spread * 1.5) this.engaged = true;
+    this.prompt = this.hazardLabel ||
+      `BALISES DE QUARANTAINE · ${this.destroyedN}/${this.n} — détruisez-les au canon (clic gauche)`;
+    this.danger = !!this.hazardLabel;
+    this.progress = this.destroyedN / this.n;
+    if (this.destroyedN >= this.n) this.done = true;
+    return fell;
+  }
+  // Impact d'un bolt (segment a->b, rayon rr). Renvoie true si une balise tombe.
+  tryBoltHit(a, b, rr) {
+    for (const tg of this.targets) {
+      if (!tg.alive) continue;
+      const R = this.targetSize * 3.5 + rr;          // généreux : le fun avant la précision
+      const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+      const apx = tg.pos.x - a.x, apy = tg.pos.y - a.y, apz = tg.pos.z - a.z;
+      const ab2 = abx * abx + aby * aby + abz * abz;
+      let t = ab2 > 0 ? (apx * abx + apy * aby + apz * abz) / ab2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
+      if (dx * dx + dy * dy + dz * dz < R * R) {
+        tg.alive = false;
+        this.destroyedN++;
+        if (tg.mesh && this.scene) this.scene.remove(tg.mesh);
+        this.onBoom(tg.pos, this.targetSize * 2.4);
+        this.sfx && this.sfx.boom && this.sfx.boom();
+        return true;
+      }
+    }
+    return false;
+  }
+  objectivePos(out, shipPos) {
+    let best = null, bd = Infinity;
+    for (const tg of this.targets) {
+      if (!tg.alive || tg.pos.lengthSq() === 0) continue;
+      const d = shipPos ? shipPos.distanceToSquared(tg.pos) : 0;
+      if (d < bd) { bd = d; best = tg; }
+    }
+    if (!best) return false;
+    this.objectiveLabel = `Balise ${this.destroyedN + 1}/${this.n}`;
+    out.copy(best.pos);
+    return true;
+  }
+}
+
+const TYPES = { lock: LockActivity, shards: ShardActivity, land: LandActivity, destroy: DestroyActivity };
 
 export function makeActivity(def, ctx) {
   const Cls = TYPES[(def && def.type) || "lock"] || LockActivity;

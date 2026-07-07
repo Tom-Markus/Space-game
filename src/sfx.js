@@ -135,6 +135,37 @@ export class SFX {
     osc.connect(flt).connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.57);
   }
 
+  // ---- tir de canon à plasma : zap bref descendant ----
+  laser() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(1600, t); osc.frequency.exponentialRampToValueAtTime(240, t + 0.11);
+    const flt = this.ctx.createBiquadFilter(); flt.type = "bandpass"; flt.frequency.value = 900; flt.Q.value = 1.2;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    osc.connect(flt).connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.14);
+  }
+
+  // ---- explosion (balise / astéroïde) : souffle grave + fracas ----
+  boom() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource(); noise.buffer = this._noiseBuffer(0.6);
+    const flt = this.ctx.createBiquadFilter(); flt.type = "lowpass";
+    flt.frequency.setValueAtTime(1400, t); flt.frequency.exponentialRampToValueAtTime(120, t + 0.55);
+    const g1 = this.ctx.createGain();
+    g1.gain.setValueAtTime(0.34, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    noise.connect(flt).connect(g1).connect(this.master); noise.start(t);
+    const osc = this.ctx.createOscillator(); osc.type = "sine";
+    osc.frequency.setValueAtTime(140, t); osc.frequency.exponentialRampToValueAtTime(32, t + 0.5);
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.3, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.connect(g2).connect(this.master); osc.start(t); osc.stop(t + 0.56);
+  }
+
   missionComplete() { this._arp([523.25, 659.25, 783.99, 1046.5]); }       // objectif accompli
   missionNext() { this._arp([392.0, 523.25], 0.14, 0.16); }                // nouvel objectif assigné
   win() { this._arp([523.25, 659.25, 783.99, 1046.5, 1318.5], 0.2, 0.18); } // victoire finale

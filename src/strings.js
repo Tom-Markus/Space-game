@@ -42,13 +42,14 @@ export const STRINGS = {
     distUnit: "Mu", // millions d'unités
     controls: [
       ["Souris", "Orienter le vaisseau"],
+      ["Clic gauche", "TIR — canons à plasma"],
       ["Z / W", "Accélérer"],
       ["S", "Ralentir / reculer"],
       ["Maj", "Postcombustion"],
       ["Espace", "DISTORSION (super-boost)"],
+      ["V", "Vue cockpit / poursuite"],
       ["J", "Journal du signal"],
       ["M / H", "Carte / Aide"],
-      ["C", "Couper / remettre le son"],
       ["Échap", "Pause"],
     ],
     verbs: { scan: "analyser", land: "vous poser sur", flythrough: "traverser les anneaux de", probe: "sonder", sample: "prélever sur" },

@@ -6,14 +6,15 @@ const HELD_BIND = {
   ShiftLeft: "boost", ShiftRight: "boost",
   Space: "warp",                       // super-boost / vitesse de distorsion
   KeyE: "interact",
+  KeyF: "fire",                        // canons à plasma (aussi : clic gauche)
   ArrowUp: "pitchUp", ArrowDown: "pitchDown",
   ArrowLeft: "yawL", ArrowRight: "yawR",
 };
-const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause", KeyJ: "journal", Escape: "pause" };
+const PRESS_BIND = { KeyM: "map", KeyH: "help", KeyP: "pause", KeyJ: "journal", KeyV: "view", Escape: "pause" };
 // Fallback sur le glyphe imprimé (e.key) — indispensable en AZERTY/QWERTZ où la
 // touche marquée « M » envoie e.code = "Semicolon", pas "KeyM".
-const HELD_KEY = { w: "forward", z: "forward", s: "back", e: "interact" };
-const PRESS_KEY = { m: "map", h: "help", p: "pause", j: "journal" };
+const HELD_KEY = { w: "forward", z: "forward", s: "back", e: "interact", f: "fire" };
+const PRESS_KEY = { m: "map", h: "help", p: "pause", j: "journal", v: "view" };
 
 export class Input {
   constructor(canvas) {
@@ -57,8 +58,14 @@ export class Input {
       if (!this.locked || !this.enabled) return;
       this.mouseDX += e.movementX; this.mouseDY += e.movementY;
     });
+    // clic gauche = tir, uniquement quand le curseur est verrouillé (en vol)
+    addEventListener("mousedown", (e) => {
+      if (e.button === 0 && this.locked && this.enabled) this.held.add("fire");
+    });
+    addEventListener("mouseup", (e) => { if (e.button === 0) this.held.delete("fire"); });
     document.addEventListener("pointerlockchange", () => {
       this.locked = document.pointerLockElement === this.canvas;
+      if (!this.locked) this.held.delete("fire");
       if (!this.locked && this.enabled) this._emit("unlock");
     });
   }
@@ -107,7 +114,7 @@ export class Input {
 
   pollGamepad() {
     this.pad.yaw = this.pad.pitch = this.pad.throttle = 0;
-    this.pad.boost = this.pad.warp = this.pad.interact = false;
+    this.pad.boost = this.pad.warp = this.pad.interact = this.pad.fire = false;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads) {
       if (!gp) continue;
@@ -116,7 +123,7 @@ export class Input {
       this.pad.pitch += dz(gp.axes[1] || 0);
       const rt = gp.buttons[7]?.value || 0, lt = gp.buttons[6]?.value || 0;
       this.pad.throttle += rt - lt;
-      if (gp.buttons[2]?.pressed) this.pad.interact = true;            // X
+      if (gp.buttons[2]?.pressed) this.pad.fire = true;                // X : tir
       if (gp.buttons[5]?.pressed) this.pad.boost = true;               // RB
       if (gp.buttons[0]?.pressed || gp.buttons[4]?.pressed) this.pad.warp = true; // A / LB
     }
@@ -130,4 +137,5 @@ export class Input {
   boost() { return this.held.has("boost") || this.pad.boost; }
   warp() { return this.held.has("warp") || this.pad.warp; }
   interact() { return this.held.has("interact") || this.pad.interact; }
+  fire() { return this.held.has("fire") || this.pad.fire; }
 }

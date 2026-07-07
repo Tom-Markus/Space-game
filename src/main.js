@@ -13,7 +13,8 @@ import { Status } from "./status.js";
 import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, FRAGMENT_GLOSS, SPEAKERS, ACTS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
 import { SHIP, SCALE, QUALITY, PLANETS } from "./config.js";
-import { SpeedDust, LensFlare, LocalRocks, BeltHaze } from "./fx.js";
+import { SpeedDust, LensFlare, LocalRocks, BeltHaze, Explosions } from "./fx.js";
+import { Blaster } from "./weapons.js";
 import { SETTINGS, saveSettings } from "./settings.js";
 
 applyStaticStrings();
@@ -123,6 +124,7 @@ addEventListener("keydown", (e) => {
 
 let system, ship, missions, starmap, pionnier;
 let dust, flare, rocks, lastRegion = null;   // effets d'immersion (fx.js)
+let explosions, blaster;                     // canons à plasma + impacts (weapons.js)
 let playingSince = 0;                        // anti « pause fantôme » à la reprise du pointer-lock
 let navTarget = null;                    // cap choisi par le joueur via la carte
 let trustAria = true, choiceMade = false; // choix moral de Saturne -> oriente la fin
@@ -185,6 +187,8 @@ system.load((p) => {
   scene.add(pionnier);
   starmap = new StarMap(system, (key) => { navTarget = key; }, closeMap);
   setupFx();
+  blaster = new Blaster(scene, ship, sfx);
+  refreshCamBtn();
   placeShipStart();
   document.getElementById("loading").classList.add("hidden");
   document.getElementById("start").classList.remove("hidden");
@@ -196,20 +200,28 @@ function setupFx() {
   const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1.496e9;
   dust = new SpeedDust(scene);
   flare = new LensFlare(system);
+  explosions = new Explosions(scene);
   // ceintures vues de loin : poussière zodiacale DISCRÈTE (à peine suggérée,
   // comme la vraie ceinture — un voile, pas un mur de points)
   new BeltHaze(scene, [
     { inner: AU * 2.1, outer: AU * 3.35, thickness: AU * 0.05, count: 2200, color: 0xb8a888, opacity: 0.07, size: 1.2 },
     { inner: AU * 31, outer: AU * 49, thickness: AU * 1.4, count: 2600, color: 0x9fb8d8, opacity: 0.07, size: 1.4 },
   ]);
-  // champs de roches locaux : matérialisés autour de la caméra dans chaque région
+  // champs de roches locaux : matérialisés autour de la caméra dans chaque région.
+  // La QUALITÉ choisie au menu (2K/4K/8K) fixe la DISTANCE DE RENDU des roches
+  // (rayon en cellules), le nombre d'instances et le détail des maillages.
+  const ROCKQ = {
+    perf:  { range: 7,  max: 240,  detail: 2 },  // rendu ≈ 6 300 km (cellules de 9 000 u)
+    high:  { range: 10, max: 560,  detail: 3 },  // rendu ≈ 8 500 km
+    ultra: { range: 13, max: 1100, detail: 3 },  // rendu ≈ 11 000 km
+  }[QUALITY] || { range: 10, max: 560, detail: 3 };
   const v = new THREE.Vector3();
   const saturn = system.bodies.get("saturn");
   const sTilt = system.saturnTilt;           // repère incliné des anneaux (cf. bodies.js)
   const sInner = 74500 * 10 * 0.94, sOuter = 140180 * 10 * 1.04;
   rocks = new LocalRocks(scene, [
     {
-      name: "rings", cell: 1200, prob: 0.6, sizeMin: 60, sizeMax: 260, color: 0xcfd8de,
+      name: "rings", cell: 1600, prob: 0.30, sizeMin: 60, sizeMax: 240, color: 0xcfd8de,
       contains: (p) => {
         if (!saturn || !sTilt) return false;
         v.copy(p); sTilt.worldToLocal(v);
@@ -218,20 +230,37 @@ function setupFx() {
       },
     },
     {
-      name: "belt", cell: 4600, prob: 0.5, sizeMin: 300, sizeMax: 1500, color: 0xa89f90,
+      name: "belt", cell: 9000, prob: 0.16, sizeMin: 250, sizeMax: 1400, color: 0xa89f90,
       contains: (p) => {
         const r = Math.hypot(p.x, p.z);
         return r > AU * 2.05 && r < AU * 3.4 && Math.abs(p.y) < AU * 0.04;
       },
     },
     {
-      name: "kuiper", cell: 6200, prob: 0.42, sizeMin: 400, sizeMax: 1800, color: 0x93a3b8,
+      name: "kuiper", cell: 11000, prob: 0.14, sizeMin: 350, sizeMax: 1800, color: 0x93a3b8,
       contains: (p) => {
         const r = Math.hypot(p.x, p.z);
         return r > AU * 30.5 && r < AU * 49.5 && Math.abs(p.y) < AU * 1.2;
       },
     },
-  ]);
+  ], ROCKQ);
+}
+
+// ---- impacts des bolts : balises de mission d'abord, astéroïdes ensuite ----
+function boltHit(a, b, rr) {
+  const act = missions && missions.activity;
+  if (act && act.tryBoltHit && act.tryBoltHit(a, b, rr)) return true;
+  if (rocks) {
+    const rock = rocks.tryBoltHit(a, b, rr);
+    if (rock) {
+      tmp.set(rock.x, rock.y, rock.z);
+      explosions.spawn(tmp, rock.r);
+      sfx.boom && sfx.boom();
+      bark("rockBoom");
+      return true;
+    }
+  }
+  return false;
 }
 
 function placeShipStart() {
@@ -262,9 +291,30 @@ function newGame() {
     document.body.classList.add("free-mode");
   } else {
     document.body.classList.remove("free-mode");
-    missions = new Missions(system, hud, onWin, sfx, comms, onChoice, { status, scene, onFx, onAct: showActCard });
+    missions = new Missions(system, hud, onWin, sfx, comms, onChoice, {
+      status, scene, onFx, onAct: showActCard,
+      onBoom: (pos, size) => explosions && explosions.spawn(pos, size),
+    });
   }
 }
+
+// ---- bouton caméra (à côté du bouton musique) + touche V : poursuite <-> cockpit ----
+const camBtn = document.getElementById("camBtn");
+function refreshCamBtn() {
+  if (!camBtn) return;
+  const cockpit = SETTINGS.view === "cockpit";
+  camBtn.classList.toggle("cockpit", cockpit);
+  camBtn.textContent = cockpit ? "◉" : "◎";
+  camBtn.setAttribute("aria-label", cockpit ? "Vue poursuite" : "Vue cockpit");
+}
+function toggleView() {
+  SETTINGS.view = SETTINGS.view === "cockpit" ? "chase" : "cockpit";
+  saveSettings();
+  if (ship) ship.setView(SETTINGS.view);
+  refreshCamBtn();
+  sfx.click();
+}
+camBtn && camBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleView(); });
 
 // ---- carte de titre d'acte (« ACTE I — L'APPEL ») : ponctue la campagne ----
 let _actTimer = null;
@@ -504,6 +554,7 @@ input.onPress("unlock", () => {
 });
 input.onPress("pause", () => (state === "playing" ? pauseGame() : state === "paused" ? resumeGame() : null));
 input.onPress("map", () => { sfx.click(); openMap(); });
+input.onPress("view", () => { if (state === "playing" || state === "paused") toggleView(); });
 input.onPress("help", () => document.getElementById("help").classList.toggle("hidden"));
 input.onPress("journal", () => { if (state === "playing" || state === "paused") toggleJournal(); });
 document.getElementById("radar").addEventListener("click", () => { sfx.click(); openMap(); });
@@ -606,6 +657,15 @@ function frame(now) {
     // longs silences : ARIA meuble la croisière (jamais par-dessus un dialogue)
     idleT = comms.busy ? 0 : idleT + dt;
     if (idleT > 75) { idleT = 0; bark("idle"); }
+
+    // ---- canons à plasma ----
+    if (blaster) {
+      if (input.fire()) {
+        const wasFirst = !blaster.firedOnce;
+        if (blaster.tryFire() && wasFirst) bark("fire");
+      }
+      blaster.update(dt, boltHit);
+    }
     hud.setSpeed(ship.speed, mode, ship.warping ? 1 : Math.min(Math.abs(ship.speed) / SHIP.boostMax, 1));
     document.body.classList.toggle("warping", ship.warping && ship.warpAmount > 0.25);
     const nb = lastNav.key && system.bodies.get(lastNav.key);
@@ -617,8 +677,18 @@ function frame(now) {
       : (missions && missions.targetReady ? missions.activeKey : null);
     if (tk) {
       const b = system.bodies.get(tk);
-      b.getWorldPosition(tmp);
-      hud.updateTargetMarker(camera, tmp, b.def.name, Math.max(0, ship.group.position.distanceTo(tmp) - b.radius), tk === navTarget);
+      // le GPS de mission pointe l'OBJECTIF précis (source, éclat, balise…),
+      // pas le centre de la planète — repli sur l'astre si l'activité n'a rien.
+      const act = missions && missions.activity;
+      let name = b.def.name, dist;
+      if (tk !== navTarget && act && act.objectivePos(tmp, ship.group.position)) {
+        if (act.objectiveLabel) name = `${act.objectiveLabel} — ${b.def.name}`;
+        dist = ship.group.position.distanceTo(tmp);
+      } else {
+        b.getWorldPosition(tmp);
+        dist = Math.max(0, ship.group.position.distanceTo(tmp) - b.radius);
+      }
+      hud.updateTargetMarker(camera, tmp, name, dist, tk === navTarget);
     } else hud.updateTargetMarker(camera, null);
     hud.updateMinimap(system, ship, tk);
   } else if (system) {
@@ -633,6 +703,7 @@ function frame(now) {
   // ---- effets d'immersion ----
   if (dust && ship) dust.update(dt, camera, ship.velocity, ship.warpAmount);
   if (flare) flare.update(dt, camera);
+  if (explosions) explosions.update(dt);
   if (rocks && ship) {
     rocks.update(dt, ship.group.position);
     const regionName = rocks.activeRegion ? rocks.activeRegion.name : null;
