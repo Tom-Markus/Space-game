@@ -58,19 +58,29 @@ function makeMfd() {
   return { cv, ctx: cv.getContext("2d"), tex };
 }
 
+// cadre d'écran à COINS ARRONDIS sur fond transparent (l'écran épouse la console)
+function _mfdPath(ctx) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(3, 3, MFD_W - 6, MFD_H - 6, 18);
+  else ctx.rect(3, 3, MFD_W - 6, MFD_H - 6);
+}
 function mfdFrame(ctx, title, right) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "#050f17"; ctx.fillRect(0, 0, MFD_W, MFD_H);
-  ctx.strokeStyle = "rgba(98,216,255,.35)"; ctx.lineWidth = 2; ctx.strokeRect(3, 3, MFD_W - 6, MFD_H - 6);
+  ctx.clearRect(0, 0, MFD_W, MFD_H);
+  _mfdPath(ctx); ctx.fillStyle = "#050f17"; ctx.fill();
+  _mfdPath(ctx); ctx.strokeStyle = "rgba(98,216,255,.4)"; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.save();
+  _mfdPath(ctx); ctx.clip();                          // grille contenue dans l'arrondi
   ctx.strokeStyle = "rgba(98,216,255,.06)"; ctx.lineWidth = 1;
   for (let x = 16; x < MFD_W; x += 16) { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, MFD_H - 4); ctx.stroke(); }
   for (let y = 16; y < MFD_H; y += 16) { ctx.beginPath(); ctx.moveTo(4, y); ctx.lineTo(MFD_W - 4, y); ctx.stroke(); }
+  ctx.restore();
   ctx.font = "9px ui-monospace, monospace";
-  ctx.fillStyle = MFD_CYAN; ctx.fillText(title, 10, 16);
+  ctx.fillStyle = MFD_CYAN; ctx.fillText(title, 12, 17);
   if (right) {
     ctx.fillStyle = MFD_TXT; ctx.textAlign = "right";
-    ctx.fillText(right, MFD_W - 10, 16);
+    ctx.fillText(right, MFD_W - 12, 17);
     ctx.textAlign = "left";
   }
 }
@@ -403,94 +413,110 @@ export class Ship {
     floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0.0, -1.10); floor.material.side = THREE.FrontSide;
     cp.add(floor);
 
-    // console principale, BASSE (dégagée du champ de vision) + visière fine
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.14, 0.30), panelMat);
-    dash.position.set(0, 0.28, -1.64); dash.rotation.x = 0.30; cp.add(dash);
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.016, 0.12), frameMat);
-    hood.position.set(0, 0.372, -1.685); hood.rotation.x = 0.46; cp.add(hood);
+    // console panoramique INCURVÉE : un arc de cylindre enveloppe le pilote,
+    // chaque instrument fait face à son regard (ergonomie « wraparound »).
+    const ARC = 2.0;                                       // ouverture de l'arc (rad)
+    const dashMat = panelMat.clone(); dashMat.side = THREE.DoubleSide;
+    const dash = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.56, 0.63, 0.20, 40, 1, true, Math.PI - ARC / 2, ARC), dashMat);
+    dash.position.set(0, 0.315, -1.02); dash.rotation.x = 0.12;   // le haut penche vers le pilote
+    cp.add(dash);
+    // bourrelet supérieur arrondi (casquette) qui épouse l'arc de la console
+    const coaming = new THREE.Mesh(new THREE.TorusGeometry(0.565, 0.020, 10, 40, ARC), frameMat);
+    coaming.rotation.set(-Math.PI / 2, 0, Math.PI / 2 - ARC / 2);
+    coaming.position.set(0, 0.418, -1.04);
+    cp.add(coaming);
 
-    // trois écrans MFD (instruments TEMPS RÉEL : radar / horizon / systèmes),
-    // posés sur la console, inclinés vers le pilote, sous la ligne d'horizon
+    // trois écrans MFD (instruments TEMPS RÉEL) répartis SUR l'arc, chacun
+    // pivoté vers l'œil du pilote, coins arrondis (canvas transparent)
     this._mfds = { nav: makeMfd(), adi: makeMfd(), sys: makeMfd() };
     this._mfdAcc = 1;                                     // premier rafraîchissement immédiat
-    const mkScreen = (mfd, x, w, h) => {
-      const bezel = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.024, h + 0.024), frameMat);
-      bezel.position.set(x, 0.349, -1.545); bezel.rotation.x = -1.05; cp.add(bezel);
+    const SCR_RAD = 0.50;
+    const mkScreen = (mfd, a, w, h) => {
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: mfd.tex, toneMapped: false }));
-      scr.position.set(x, 0.35, -1.541); scr.rotation.x = -1.05; cp.add(scr);
+        new THREE.MeshBasicMaterial({ map: mfd.tex, toneMapped: false, transparent: true }));
+      scr.position.set(Math.sin(a) * SCR_RAD, 0.368, -1.02 - Math.cos(a) * SCR_RAD);
+      scr.rotation.set(-1.05, -a, 0, "YXZ");              // face au pilote, incliné vers lui
+      cp.add(scr);
     };
-    mkScreen(this._mfds.nav, -0.24, 0.175, 0.11);
+    mkScreen(this._mfds.nav, -0.58, 0.175, 0.11);
     mkScreen(this._mfds.adi, 0, 0.205, 0.13);
-    mkScreen(this._mfds.sys, 0.24, 0.175, 0.11);
+    mkScreen(this._mfds.sys, 0.58, 0.175, 0.11);
     // premier dessin (écrans jamais noirs, même avant la première frame jouée)
     this.updateCockpit(1, {}, true);
 
-    // rangées de boutons rétroéclairés (petits, tamisés), SUR la face inclinée
+    // boutons rétroéclairés RONDS, en deux arcs qui suivent la console
     const BTN_COLS = [0x62d8ff, 0xffc24d, 0x62ffb0, 0x9b8cff, 0x8fa8cd];
     const dimmed = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
-    const BTN_ROWS = [[0.322, -1.522], [0.309, -1.479]];        // points sur la face (précalculés)
-    BTN_ROWS.forEach(([by, bz], r) => {
+    const btnGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.007, 10);
+    [[0.46, 0.326], [0.435, 0.312]].forEach(([rad, by], r) => {
       for (let i = 0; i < 11; i++) {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.005, 0.008),
+        const a = -0.45 + i * 0.09;
+        const b = new THREE.Mesh(btnGeo,
           new THREE.MeshBasicMaterial({ color: dimmed(BTN_COLS[(i * 3 + r) % BTN_COLS.length], 0.42), toneMapped: false }));
-        b.position.set(-0.15 + i * 0.03, by, bz);
-        b.rotation.x = 0.30;
+        b.position.set(Math.sin(a) * rad, by, -1.02 - Math.cos(a) * rad);
+        b.rotation.set(-0.22, -a, 0, "YXZ");
         cp.add(b);
       }
     });
 
-    // consoles latérales : accoudoirs techniques avec témoins
+    // accoudoirs latéraux ARRONDIS (demi-cylindres) avec témoins ronds
+    const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 16);
     for (const s of [-1, 1]) {
-      const side = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.52), panelMat);
-      side.position.set(s * 0.36, 0.30, -1.28); side.rotation.z = s * -0.12; cp.add(side);
+      const arm = new THREE.Mesh(armGeo, panelMat);
+      arm.rotation.x = Math.PI / 2; arm.rotation.z = s * -0.06;
+      arm.position.set(s * 0.37, 0.295, -1.28);
+      cp.add(arm);
       for (let i = 0; i < 4; i++) {
-        const led = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.005, 0.022),
+        const led = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.005, 8),
           new THREE.MeshBasicMaterial({ color: dimmed(BTN_COLS[(i + (s > 0 ? 2 : 0)) % BTN_COLS.length], 0.42), toneMapped: false }));
-        led.position.set(s * 0.345, 0.338, -1.44 + i * 0.09); led.rotation.z = s * -0.12;
+        led.position.set(s * 0.36, 0.348, -1.44 + i * 0.09);
         cp.add(led);
       }
     }
 
-    // manche central + manette des gaz à gauche
+    // manche central (socle cylindrique, poignée galbée) + manette des gaz
     const stick = new THREE.Group();
-    const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.07), panelMat);
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.042, 0.16, 14), panelMat);
     pedestal.position.y = -0.06; stick.add(pedestal);            // socle jusqu'au plancher
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.15, 10), frameMat);
     shaft.position.y = 0.075; stick.add(shaft);
     const grip = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 10), panelMat);
     grip.scale.set(1, 1.35, 1); grip.position.y = 0.165; stick.add(grip);
-    const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.02, 0.012),
+    const trigger = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.02, 8),
       new THREE.MeshBasicMaterial({ color: 0xff5d6c, toneMapped: false }));
     trigger.position.set(0, 0.16, -0.024); stick.add(trigger);
     stick.position.set(0, 0.14, -1.335); stick.rotation.x = -0.16;
     cp.add(stick);
     const throttle = new THREE.Group();
-    const tBase = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.12), frameMat); throttle.add(tBase);
+    const tBase = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.10, 12), frameMat);
+    tBase.rotation.x = Math.PI / 2; throttle.add(tBase);
     const tLever = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.09, 8), frameMat);
     tLever.position.set(0, 0.045, 0.01); tLever.rotation.x = 0.5; throttle.add(tLever);
     const tKnob = new THREE.Mesh(new THREE.SphereGeometry(0.017, 10, 8), panelMat);
     tKnob.position.set(0, 0.085, 0.032); throttle.add(tKnob);
-    throttle.position.set(-0.36, 0.345, -1.30); throttle.rotation.z = 0.12;
+    throttle.position.set(-0.37, 0.352, -1.28); throttle.rotation.z = 0.10;
     cp.add(throttle);
 
-    // montants de verrière TRÈS fins, plaqués aux bords du champ de vision,
-    // et traverse haute reculée : un cadre discret, pas des barreaux
+    // montants de verrière CYLINDRIQUES très fins + traverse arrondie
+    const pillarGeo = new THREE.CylinderGeometry(0.015, 0.019, 0.60, 10);
     for (const s of [-1, 1]) {
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.60, 0.035), frameMat);
+      const pillar = new THREE.Mesh(pillarGeo, frameMat);
       pillar.position.set(s * 0.46, 0.60, -1.36);
       pillar.rotation.z = s * -0.36; pillar.rotation.x = 0.20;
       cp.add(pillar);
     }
-    const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.035), frameMat);
+    const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.55, 10), frameMat);
+    topBar.rotation.z = Math.PI / 2;
     topBar.position.set(0, 0.895, -1.44); cp.add(topBar);
-    // console plafonnier (interrupteurs), reculée : visible en levant les yeux
-    const over = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.018, 0.09), panelMat);
+    // pod plafonnier CIRCULAIRE (interrupteurs en couronne), visible en levant les yeux
+    const over = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.11, 0.02, 20), panelMat);
     over.position.set(0, 0.875, -1.14); cp.add(over);
-    for (let i = 0; i < 4; i++) {
-      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.016),
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const sw = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.008, 8),
         new THREE.MeshBasicMaterial({ color: dimmed(i === 2 ? 0xffc24d : 0x62d8ff, 0.42), toneMapped: false }));
-      sw.position.set(-0.075 + i * 0.05, 0.864, -1.14);
+      sw.position.set(Math.cos(a) * 0.055, 0.863, -1.14 + Math.sin(a) * 0.055);
       cp.add(sw);
     }
 
