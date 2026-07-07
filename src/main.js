@@ -251,13 +251,17 @@ function setupFx() {
 // ---- impacts des bolts : balises de mission d'abord, astéroïdes ensuite ----
 function boltHit(a, b, rr) {
   const act = missions && missions.activity;
-  if (act && act.tryBoltHit && act.tryBoltHit(a, b, rr)) return true;
+  if (act && act.tryBoltHit && act.tryBoltHit(a, b, rr)) {
+    hud.hitmark();                                      // touche confirmée (balise)
+    return true;
+  }
   if (rocks) {
     const rock = rocks.tryBoltHit(a, b, rr);
     if (rock) {
       tmp.set(rock.x, rock.y, rock.z);
       explosions.spawn(tmp, rock.r);
       sfx.boom && sfx.boom();
+      hud.hitmark();                                    // touche confirmée (astéroïde)
       bark("rockBoom");
       return true;
     }
@@ -673,9 +677,13 @@ function frame(now) {
 
     // ---- canons à plasma ----
     if (blaster) {
+      hud.setFiring(input.fire());                      // réticule « armé »
       if (input.fire()) {
         const wasFirst = !blaster.firedOnce;
-        if (blaster.tryFire() && wasFirst) bark("fire");
+        if (blaster.tryFire()) {
+          ship.recoil = Math.min(1, ship.recoil + 0.5); // secousse de recul
+          if (wasFirst) bark("fire");
+        }
       }
       blaster.update(dt, boltHit);
     }

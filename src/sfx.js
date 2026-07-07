@@ -135,12 +135,13 @@ export class SFX {
     osc.connect(flt).connect(g).connect(this.master); osc.start(t); osc.stop(t + 0.57);
   }
 
-  // ---- tir de canon à plasma : zap bref descendant ----
+  // ---- tir de canon à plasma : zap bref descendant (timbre légèrement varié) ----
   laser() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator(); osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(1600, t); osc.frequency.exponentialRampToValueAtTime(240, t + 0.11);
+    osc.frequency.setValueAtTime(1450 + Math.random() * 320, t);
+    osc.frequency.exponentialRampToValueAtTime(215 + Math.random() * 60, t + 0.11);
     const flt = this.ctx.createBiquadFilter(); flt.type = "bandpass"; flt.frequency.value = 900; flt.Q.value = 1.2;
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);

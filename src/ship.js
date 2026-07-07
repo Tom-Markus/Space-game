@@ -238,6 +238,7 @@ export class Ship {
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion();
     this._baseFov = 60; this._t = 0; this._collided = false;
     this._bank = 0;                          // inclinaison visuelle en virage
+    this.recoil = 0;                         // recul de caméra au tir (weapons.js)
     this.clearance = SHIP.size * 1.6;
     this._build();
     scene.add(this.group);
@@ -686,6 +687,12 @@ export class Ship {
     if (this.view === "cockpit") {
       camera.position.copy(this._eyeLocal).applyMatrix4(this.model.matrixWorld);
       this._prevPos.copy(g.position);            // garde le suivi 3ᵉ personne cohérent au retour
+      if (this.recoil > 0.002) {                 // secousse de recul au tir
+        this.recoil *= Math.exp(-dt * 9);
+        this.forward(this._fwd);
+        camera.position.addScaledVector(this._fwd, -this.recoil * 0.045);
+        camera.position.y += (Math.random() - 0.5) * this.recoil * 0.012;
+      }
       if (this.warpAmount > 0.05) {
         const a = this.warpAmount * 0.05;
         camera.position.x += (Math.random() - 0.5) * a;
@@ -706,6 +713,12 @@ export class Ship {
     // ... puis lissage de l'erreur d'offset (orientation/hauteur)
     this._desired.set(0, SHIP.cam.height, SHIP.cam.dist).applyMatrix4(g.matrixWorld);
     camera.position.lerp(this._desired, 1 - Math.exp(-SHIP.cam.lag * dt));
+    if (this.recoil > 0.002) {                          // recul de caméra au tir
+      this.recoil *= Math.exp(-dt * 9);
+      this.forward(this._fwd);
+      camera.position.addScaledVector(this._fwd, -this.recoil * 0.14);
+      camera.position.y += (Math.random() - 0.5) * this.recoil * 0.02;
+    }
     if (this.warpAmount > 0.05) {                       // très légère vibration en distorsion seulement
       const a = this.warpAmount * 0.08;
       camera.position.x += (Math.random() - 0.5) * a;

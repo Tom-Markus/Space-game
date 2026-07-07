@@ -192,9 +192,17 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 #nearVal{font-size:14px;font-weight:700;color:var(--accent)}
 #nearDist{font-family:var(--mono);font-size:10px;color:#7d96bb}
 
-#reticle{position:fixed;top:50%;left:50%;width:58px;height:58px;transform:translate(-50%,-50%);opacity:.45}
+#reticle{position:fixed;top:50%;left:50%;width:58px;height:58px;transform:translate(-50%,-50%);opacity:.45;
+  transition:opacity .15s}
 #reticle circle{fill:none;stroke:var(--accent);stroke-width:1.3}#reticle .dot{fill:var(--accent);stroke:none}
 #reticle path{stroke:var(--accent);stroke-width:1.3}
+/* pendant le tir : réticule affûté et lumineux */
+#reticle.firing{opacity:.9}
+#reticle.firing circle,#reticle.firing path{stroke:#cfeaff;filter:drop-shadow(0 0 4px rgba(150,220,255,.8))}
+/* marqueur de touche : X qui claque quand un projectile fait mouche */
+#reticle #hitmark{stroke:#ffd27a;stroke-width:2.4;opacity:0;transform:scale(1.5);transform-origin:center;
+  transition:opacity .05s,transform .05s;filter:drop-shadow(0 0 5px rgba(255,190,90,.9))}
+#reticle #hitmark.show{opacity:1;transform:scale(1)}
 
 #targetMarker{position:fixed;transform:translate(-50%,-50%);display:none;flex-direction:column;align-items:center;
   color:var(--amber);text-shadow:0 0 8px rgba(0,0,0,.9);font-size:11px}
@@ -211,16 +219,15 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 #targetMarker.nav em{color:#bfeaff}
 #targetArrow.nav{color:var(--accent);text-shadow:0 0 12px rgba(98,216,255,.75)}
 
-/* couloirs du bas (vue poursuite) : télémétrie 20-84px · sous-titres 98-~200px ·
-   invite à 37 % (au-dessus du VAISSEAU, sous le réticule) — jamais de chevauchement,
-   même avec une réplique d'ARIA sur trois lignes. */
-#prompt{position:fixed;bottom:37%;left:50%;transform:translateX(-50%);background:rgba(8,16,32,.82);
+/* invite de mission : TOUT EN HAUT de l'écran, centrée entre les panneaux
+   mission et journal — la vue de vol reste entièrement dégagée. */
+#prompt{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(8,16,32,.82);
   border:1px solid var(--accent);border-radius:30px;padding:11px 26px;font-size:14.5px;color:#eaf3ff;
   box-shadow:0 0 28px rgba(98,216,255,.3);animation:pp 1.5s infinite}
 #prompt b{color:var(--accent);font-family:var(--mono)}
 @keyframes pp{50%{box-shadow:0 0 40px rgba(98,216,255,.6)}}
 
-#toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center}
+#toast{position:fixed;top:84px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center}
 .toast-item{background:rgba(8,18,36,.9);border:1px solid var(--brd);border-left:3px solid var(--ok);border-radius:8px;
   padding:10px 20px;font-size:13.5px;color:#eaf3ff;box-shadow:0 6px 26px rgba(0,8,24,.5);
   animation:tin .35s ease,tout .4s ease forwards;animation-delay:0s,3.4s;max-width:80vw;text-align:center}
@@ -559,8 +566,8 @@ body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
   #statusWidget{left:auto;right:8px;top:118px;bottom:auto;width:128px;padding:6px 9px}
   /* sous-titres : au-dessus des commandes tactiles, jamais sur le stick */
   #comms{bottom:184px;max-width:80vw}
-  /* invite : au-dessus des sous-titres (couloir dédié) */
-  #prompt{bottom:300px;font-size:13px;padding:9px 18px}
+  /* invite : sous les panneaux du haut (couloir dédié) */
+  #prompt{top:176px;font-size:13px;padding:8px 16px;max-width:84vw;text-align:center}
   .corner{display:none}
   #help{display:none !important}
 }
@@ -586,13 +593,9 @@ body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
 body.cockpit-view #telemetry,
 body.cockpit-view #statusWidget,
 body.cockpit-view #radar { display:none !important }
-/* sous-titres radio : en bandeau HAUT, sous les panneaux mission/journal */
-body.cockpit-view #comms { bottom:auto; top:128px }
+/* sous-titres radio : en bandeau HAUT, sous l'invite et les toasts */
+body.cockpit-view #comms { bottom:auto; top:150px }
 body.cockpit-view #comms.show { transform:translate(-50%,0) }
-/* invite de mission : juste AU-DESSUS de la casquette de console */
-body.cockpit-view #prompt { bottom:36% }
-/* toasts : décalés pour ne pas croiser les sous-titres remontés */
-body.cockpit-view #toast { top:60px }
 /* boutons caméra + musique : rangés dans le coin (place du radar masqué) */
 body.cockpit-view #musicBtn { bottom:20px; right:20px }
 body.cockpit-view #camBtn { bottom:72px; right:20px }

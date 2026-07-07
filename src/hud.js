@@ -26,8 +26,9 @@ export class Hud {
       marker: $("targetMarker"), markerName: $("targetMarkerName"), markerDist: $("targetMarkerDist"),
       arrow: $("targetArrow"), arrowDist: $("targetArrowDist"), minimap: $("minimap"),
       hull: $("hullFill"), shield: $("shieldFill"), statusWrap: $("statusWidget"),
-      lockRing: $("lockRing"),
+      lockRing: $("lockRing"), reticle: $("reticle"), hitmark: $("hitmark"),
     };
+    this._hitT = null;
     this.mm = this.el.minimap.getContext("2d");
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
@@ -88,6 +89,21 @@ export class Hud {
     if (this.el.hull) this.el.hull.style.width = Math.max(0, Math.min(1, hull)) * 100 + "%";
     if (this.el.shield) this.el.shield.style.width = Math.max(0, Math.min(1, shield)) * 100 + "%";
     if (this.el.statusWrap) this.el.statusWrap.classList.toggle("critical", hull < 0.34);
+  }
+
+  // marqueur de touche : X ambre qui claque sur le réticule (impact confirmé)
+  hitmark() {
+    if (!this.el.hitmark) return;
+    this.el.hitmark.classList.remove("show");
+    void this.el.hitmark.getBoundingClientRect();     // relance la transition
+    this.el.hitmark.classList.add("show");
+    clearTimeout(this._hitT);
+    this._hitT = setTimeout(() => this.el.hitmark.classList.remove("show"), 160);
+  }
+
+  // réticule « armé » pendant que la gâchette est tenue
+  setFiring(on) {
+    if (this.el.reticle) this.el.reticle.classList.toggle("firing", !!on);
   }
 
   toast(msg, type = "ok") {
