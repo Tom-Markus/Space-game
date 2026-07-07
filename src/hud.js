@@ -34,12 +34,6 @@ export class Hud {
     this._v2 = new THREE.Vector3();
     // rayon radar = orbite de Pluton (les objets épars au-delà sont plaqués au bord)
     this._maxDist = (PLANETS.find((p) => p.key === "pluto")?.distance || 1) * 1.1;
-    // ceintures dessinées sur le radar (bandes discrètes)
-    const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1;
-    this._belts = [
-      { inner: AU * 2.1, outer: AU * 3.35, color: "rgba(184,168,136,.10)" },
-      { inner: AU * 31, outer: AU * 49, color: "rgba(159,184,216,.08)" },
-    ];
     this._list = [];
   }
 
@@ -156,15 +150,6 @@ export class Hud {
     const rMax = c - 10;
     const scale = rMax / this._maxDist;
     ctx.clearRect(0, 0, S, S);
-    // ceintures : bandes discrètes
-    for (const b of this._belts) {
-      const ri = Math.min(b.inner * scale, rMax), ro = Math.min(b.outer * scale, rMax);
-      if (ro <= ri) continue;
-      ctx.beginPath();
-      ctx.arc(c, c, ro, 0, Math.PI * 2);
-      ctx.arc(c, c, ri, 0, Math.PI * 2, true);
-      ctx.fillStyle = b.color; ctx.fill();
-    }
     ctx.strokeStyle = "rgba(98,216,255,.10)"; ctx.lineWidth = 1;
     for (const p of PLANETS) {
       if (!p.distance || p.distance > this._maxDist) continue;

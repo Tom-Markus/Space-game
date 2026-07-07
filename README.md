@@ -31,11 +31,11 @@ Bonus : 4 **planètes naines** explorables — Cérès, Hauméa, Makémaké, Ér
 - **Lens flare** du Soleil (fantômes + strie anamorphique), occulté par les planètes.
 - **Poussière de vitesse** enveloppant la caméra : le vide « défile » enfin en croisière,
   et s'étire en **traînées d'étoiles 3D** à la distorsion.
-- **Ceintures d'astéroïdes** (principale + Kuiper) : voile de particules au loin, et
-  **vrais astéroïdes** (3 silhouettes cratérisées, flat shading, espacement naturel) qui se
-  matérialisent autour de vous quand vous les traversez — y compris **dans les anneaux de
-  Saturne**. La **distance de rendu suit la qualité choisie** (2K ≈ 6 300 km · 4K ≈ 8 500 km ·
-  8K ≈ 11 000 km). ARIA les commente à l'entrée… et ils sont **destructibles**.
+- **Blocs de glace des anneaux de Saturne** : de vrais astéroïdes (3 silhouettes
+  cratérisées, flat shading) se matérialisent autour de vous pendant le slalom de la
+  mission « Traversée des anneaux ». La **distance de rendu suit la qualité choisie**,
+  ARIA les commente à l'entrée… et ils sont **destructibles**. Ailleurs, l'espace est
+  laissé à sa vraie immensité — aucun rocher flottant hors mission.
 - **Inclinaison en virage** : le vaisseau se penche dans les courbes (la caméra reste stable).
 - Départ **côté jour** : la première image du jeu est un lever de Terre éclairé.
 

@@ -7,12 +7,11 @@
 //   • LensFlare   : reflet d'objectif du Soleil (DOM, mode screen),
 //                   atténué quand un astre s'interpose ou hors-champ.
 //   • LocalRocks  : astéroïdes instanciés qui se matérialisent autour de
-//                   la caméra quand on traverse une région (ceinture
-//                   principale, ceinture de Kuiper, anneaux de Saturne).
+//                   la caméra dans les régions déclarées (anneaux de
+//                   Saturne — zone de la mission de slalom).
 //                   Placement déterministe par hachage de grille -> le
 //                   même caillou réapparaît toujours au même endroit.
-//   • BeltHaze    : les deux ceintures vues de loin — anneaux de fines
-//                   particules scintillantes autour du plan écliptique.
+//   • Explosions  : flashs + éclats poolés (impacts des canons).
 // ===================================================================
 import * as THREE from "three";
 
@@ -204,7 +203,7 @@ export class LensFlare {
 
 // ------------------------------------------------------------------
 //  Champs de roches locaux : hachage de grille déterministe.
-//  Régions : ceinture principale, Kuiper, anneaux de Saturne.
+//  Régions déclarées par main.js (anneaux de Saturne uniquement).
 //  Les astéroïdes sont destructibles (canons à plasma, cf. weapons.js).
 // ------------------------------------------------------------------
 function hash3(x, y, z) {
@@ -465,34 +464,3 @@ export class Explosions {
   }
 }
 
-// ------------------------------------------------------------------
-//  Ceintures vues de loin : anneaux de particules scintillantes.
-// ------------------------------------------------------------------
-export class BeltHaze {
-  // belts : [{ inner, outer, thickness, count, color, opacity, size }]
-  constructor(scene, belts) {
-    this.meshes = [];
-    for (const b of belts) {
-      const pos = new Float32Array(b.count * 3);
-      for (let i = 0; i < b.count; i++) {
-        const a = Math.random() * Math.PI * 2;
-        // densité maximale au centre de l'anneau (loi en cloche simple)
-        const t = (Math.random() + Math.random()) / 2;
-        const r = b.inner + t * (b.outer - b.inner);
-        pos[i * 3] = Math.cos(a) * r;
-        pos[i * 3 + 1] = (Math.random() + Math.random() - 1) * b.thickness;
-        pos[i * 3 + 2] = Math.sin(a) * r;
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      const m = new THREE.PointsMaterial({
-        color: b.color, size: b.size || 2.2, sizeAttenuation: false, transparent: true, map: discTexture(),
-        opacity: b.opacity, blending: THREE.AdditiveBlending, depthWrite: false,
-      });
-      const pts = new THREE.Points(g, m);
-      pts.frustumCulled = false;
-      scene.add(pts);
-      this.meshes.push(pts);
-    }
-  }
-}

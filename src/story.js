@@ -355,15 +355,7 @@ export const BARKS = {
     A("Choc enregistré. La coque vous pardonne. Une fois."),
     A("…On va dire que c'était volontaire."),
   ],
-  // entrées de région (ceintures, anneaux) — déclenchées par le champ de roches local
-  belt: [
-    A("Ceinture principale. Des milliards de cailloux, vestiges d'une planète qui n'a jamais réussi à naître."),
-    A("Nous entrons dans la ceinture d'astéroïdes. Je surveille les gros — évitez quand même les petits."),
-  ],
-  kuiper: [
-    A("Ceinture de Kuiper. Les décombres gelés de la création du Système. Presque personne n'est venu si loin."),
-    A("Des mondes de glace partout autour de nous. Ici, même le Soleil n'est plus qu'une étoile parmi d'autres."),
-  ],
+  // entrée dans les anneaux de Saturne — déclenchée par le champ de roches local
   rings: [
     A("Nous SOMMES dans les anneaux, Commandant. Des icebergs par milliards, en orbite parfaite depuis cent millions d'années."),
     A("De la glace pure à perte de vue. Si je pouvais retenir mon souffle, c'est maintenant que je le ferais."),

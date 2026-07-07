@@ -12,8 +12,8 @@ import { Comms, typeInto } from "./comms.js";
 import { Status } from "./status.js";
 import { INTRO, ENDING_TRUST, ENDING_DOUBT, FINAL_MESSAGE, AMBIENT, BARKS, FRAGMENT_GLOSS, SPEAKERS, ACTS } from "./story.js";
 import { applyStaticStrings, T } from "./strings.js";
-import { SHIP, SCALE, QUALITY, PLANETS } from "./config.js";
-import { SpeedDust, LensFlare, LocalRocks, BeltHaze, Explosions } from "./fx.js";
+import { SHIP, SCALE, QUALITY } from "./config.js";
+import { SpeedDust, LensFlare, LocalRocks, Explosions } from "./fx.js";
 import { Blaster } from "./weapons.js";
 import { SETTINGS, saveSettings } from "./settings.js";
 
@@ -197,25 +197,19 @@ system.load((p) => {
   state = "start";
 });
 
-// ---- effets d'immersion : poussière de vitesse, lens flare, ceintures ----
+// ---- effets d'immersion : poussière de vitesse, lens flare, roches de mission ----
 function setupFx() {
-  const AU = (PLANETS.find((p) => p.key === "earth") || {}).distance || 1.496e9;
   dust = new SpeedDust(scene);
   flare = new LensFlare(system);
   explosions = new Explosions(scene);
-  // ceintures vues de loin : poussière zodiacale DISCRÈTE (à peine suggérée,
-  // comme la vraie ceinture — un voile, pas un mur de points)
-  new BeltHaze(scene, [
-    { inner: AU * 2.1, outer: AU * 3.35, thickness: AU * 0.05, count: 2200, color: 0xb8a888, opacity: 0.07, size: 1.2 },
-    { inner: AU * 31, outer: AU * 49, thickness: AU * 1.4, count: 2600, color: 0x9fb8d8, opacity: 0.07, size: 1.4 },
-  ]);
-  // champs de roches locaux : matérialisés autour de la caméra dans chaque région.
+  // Roches locales : UNIQUEMENT dans les anneaux de Saturne (le slalom de la
+  // mission « Traversée des anneaux »). Plus aucune ceinture flottante ailleurs.
   // La QUALITÉ choisie au menu (2K/4K/8K) fixe la DISTANCE DE RENDU des roches
   // (rayon en cellules), le nombre d'instances et le détail des maillages.
   const ROCKQ = {
-    perf:  { range: 7,  max: 240,  detail: 2 },  // rendu ≈ 6 300 km (cellules de 9 000 u)
-    high:  { range: 10, max: 560,  detail: 3 },  // rendu ≈ 8 500 km
-    ultra: { range: 13, max: 1100, detail: 3 },  // rendu ≈ 11 000 km
+    perf:  { range: 7,  max: 240,  detail: 2 },  // rendu ≈ 1 100 km (cellules de 1 600 u)
+    high:  { range: 10, max: 560,  detail: 3 },  // rendu ≈ 1 600 km
+    ultra: { range: 13, max: 1100, detail: 3 },  // rendu ≈ 2 100 km
   }[QUALITY] || { range: 10, max: 560, detail: 3 };
   const v = new THREE.Vector3();
   const saturn = system.bodies.get("saturn");
@@ -229,20 +223,6 @@ function setupFx() {
         v.copy(p); sTilt.worldToLocal(v);
         const r = Math.hypot(v.x, v.z);
         return r > sInner && r < sOuter && Math.abs(v.y) < 2600;
-      },
-    },
-    {
-      name: "belt", cell: 9000, prob: 0.16, sizeMin: 250, sizeMax: 1400, color: 0xa89f90,
-      contains: (p) => {
-        const r = Math.hypot(p.x, p.z);
-        return r > AU * 2.05 && r < AU * 3.4 && Math.abs(p.y) < AU * 0.04;
-      },
-    },
-    {
-      name: "kuiper", cell: 11000, prob: 0.14, sizeMin: 350, sizeMax: 1800, color: 0x93a3b8,
-      contains: (p) => {
-        const r = Math.hypot(p.x, p.z);
-        return r > AU * 30.5 && r < AU * 49.5 && Math.abs(p.y) < AU * 1.2;
       },
     },
   ], ROCKQ);
