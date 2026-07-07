@@ -35,63 +35,166 @@ void main(){
   gl_FragColor = vec4(col, body * opacity * flick);
 }`;
 
-// ---- écrans MFD du cockpit : interfaces dessinées sur canvas ----
-function mfdTexture(kind) {
-  const W = 256, H = 160, cv = document.createElement("canvas");
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext("2d");
-  const CYAN = "#62d8ff", AMBER = "#ffc24d", GREEN = "#62ffb0", DIM = "rgba(98,216,255,.28)";
-  // fond + cadre + très léger quadrillage
-  ctx.fillStyle = "#050f17"; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(98,216,255,.35)"; ctx.lineWidth = 2; ctx.strokeRect(3, 3, W - 6, H - 6);
-  ctx.strokeStyle = "rgba(98,216,255,.07)"; ctx.lineWidth = 1;
-  for (let x = 16; x < W; x += 16) { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, H - 4); ctx.stroke(); }
-  for (let y = 16; y < H; y += 16) { ctx.beginPath(); ctx.moveTo(4, y); ctx.lineTo(W - 4, y); ctx.stroke(); }
-  ctx.font = "9px ui-monospace, monospace";
+// ===================================================================
+//  Écrans MFD du cockpit : instruments TEMPS RÉEL redessinés ~8 fois/s
+//  (uniquement en vue cockpit) à partir des vraies données du jeu.
+//   · NAV — radar de proximité : astres, astéroïdes, objectif, balayage
+//   · ADI — horizon artificiel : tangage, inclinaison, cap, vitesse
+//   · SYS — bouclier / coque / poussée / distorsion réels
+// ===================================================================
+const MFD_W = 256, MFD_H = 160;
+const MFD_CYAN = "#62d8ff", MFD_AMBER = "#ffc24d", MFD_GREEN = "#62ffb0";
+const MFD_DIM = "rgba(98,216,255,.28)", MFD_TXT = "rgba(220,235,255,.78)";
+const _mfdQ = new THREE.Quaternion();
+const _mfdV = new THREE.Vector3();
+const _mfdF = new THREE.Vector3();
 
-  if (kind === "nav") {                                  // radar circulaire + échos
-    const cx = W / 2, cy = H / 2 + 6, R = 56;
-    ctx.strokeStyle = DIM;
-    for (const f of [1, 0.66, 0.33]) { ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
-    ctx.fillStyle = "rgba(98,216,255,.12)";
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, -0.5, 0.35); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = CYAN;
-    for (const [bx, by] of [[-22, -30], [30, -12], [12, 26], [-35, 18]]) { ctx.fillRect(cx + bx, cy + by, 3, 3); }
-    ctx.fillStyle = AMBER; ctx.fillRect(cx + 40, cy - 34, 4, 4);
-    ctx.fillStyle = CYAN; ctx.fillText("NAV · PROX", 10, 16);
-    ctx.fillStyle = "rgba(220,235,255,.7)"; ctx.fillText("R 200k", W - 52, 16);
-  } else if (kind === "adi") {                           // horizon artificiel + cap
-    const cy = H / 2 + 8;
-    ctx.strokeStyle = "rgba(98,216,255,.5)"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(30, cy); ctx.lineTo(W - 30, cy); ctx.stroke();
-    ctx.lineWidth = 1; ctx.strokeStyle = DIM;
-    for (const off of [-32, -16, 16, 32]) {
-      const w = Math.abs(off) === 32 ? 26 : 44;
-      ctx.beginPath(); ctx.moveTo(W / 2 - w, cy + off); ctx.lineTo(W / 2 + w, cy + off); ctx.stroke();
-      ctx.fillStyle = DIM; ctx.fillText(String(Math.abs(off) / 3.2 | 0), W / 2 + w + 4, cy + off + 3);
-    }
-    ctx.fillStyle = AMBER;
-    ctx.beginPath(); ctx.moveTo(W / 2, cy - 6); ctx.lineTo(W / 2 - 8, cy + 7); ctx.lineTo(W / 2 + 8, cy + 7); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = CYAN; ctx.fillText("ADI · ATT", 10, 16);
-    ctx.fillStyle = "rgba(220,235,255,.85)"; ctx.font = "bold 13px ui-monospace, monospace";
-    ctx.fillText("000 · 12.4", W / 2 - 34, 26);
-  } else {                                               // systèmes : barres verticales
-    const bars = [["PWR", 0.86, CYAN], ["SHD", 0.72, CYAN], ["THR", 0.55, AMBER], ["O2", 0.93, GREEN], ["RCS", 0.64, GREEN]];
-    bars.forEach(([label, v, col], i) => {
-      const x = 26 + i * 44, y0 = H - 34, hMax = 88;
-      ctx.fillStyle = "rgba(98,216,255,.10)"; ctx.fillRect(x, y0 - hMax, 16, hMax);
-      ctx.fillStyle = col; ctx.globalAlpha = 0.85;
-      ctx.fillRect(x, y0 - hMax * v, 16, hMax * v);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(220,235,255,.7)"; ctx.fillText(label, x - 2, y0 + 14);
-    });
-    ctx.fillStyle = CYAN; ctx.fillText("SYS · ÉNERGIE", 10, 16);
+function makeMfd() {
+  const cv = document.createElement("canvas");
+  cv.width = MFD_W; cv.height = MFD_H;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return { cv, ctx: cv.getContext("2d"), tex };
+}
+
+function mfdFrame(ctx, title, right) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#050f17"; ctx.fillRect(0, 0, MFD_W, MFD_H);
+  ctx.strokeStyle = "rgba(98,216,255,.35)"; ctx.lineWidth = 2; ctx.strokeRect(3, 3, MFD_W - 6, MFD_H - 6);
+  ctx.strokeStyle = "rgba(98,216,255,.06)"; ctx.lineWidth = 1;
+  for (let x = 16; x < MFD_W; x += 16) { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, MFD_H - 4); ctx.stroke(); }
+  for (let y = 16; y < MFD_H; y += 16) { ctx.beginPath(); ctx.moveTo(4, y); ctx.lineTo(MFD_W - 4, y); ctx.stroke(); }
+  ctx.font = "9px ui-monospace, monospace";
+  ctx.fillStyle = MFD_CYAN; ctx.fillText(title, 10, 16);
+  if (right) {
+    ctx.fillStyle = MFD_TXT; ctx.textAlign = "right";
+    ctx.fillText(right, MFD_W - 10, 16);
+    ctx.textAlign = "left";
   }
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
+}
+
+// ---- NAV : radar de proximité en repère vaisseau (l'avant = le haut) ----
+const NAV_RANGE = 60000;                                  // rayon radar : 6 000 km
+function drawNav(ctx, t, ship, data) {
+  mfdFrame(ctx, "NAV · PROX", "R 6000 KM");
+  const cx = MFD_W / 2, cy = MFD_H / 2 + 8, R = 56;
+  ctx.strokeStyle = MFD_DIM;
+  for (const f of [1, 0.66, 0.33]) { ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+  // balayage tournant
+  const a = t * 1.7;
+  ctx.fillStyle = "rgba(98,216,255,.13)";
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a, a + 0.8); ctx.closePath(); ctx.fill();
+  // repère vaisseau : monde -> local (x = droite, -z = avant)
+  _mfdQ.copy(ship.group.quaternion).invert();
+  const pos = ship.group.position;
+  const blip = (wx, wy, wz, color, size, clampEdge) => {
+    _mfdV.set(wx - pos.x, wy - pos.y, wz - pos.z).applyQuaternion(_mfdQ);
+    let px = _mfdV.x / NAV_RANGE, pz = _mfdV.z / NAV_RANGE;
+    const d = Math.hypot(px, pz);
+    if (d > 1) {
+      if (!clampEdge) return;
+      px /= d; pz /= d;
+      ctx.globalAlpha = 0.45;
+    }
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx + px * R, cy + pz * R, size, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  };
+  // astéroïdes proches (échos discrets)
+  if (data.rocks) {
+    for (const r of data.rocks.list) blip(r.x, r.y, r.z, "rgba(190,210,230,.75)", 1.5, false);
+  }
+  // astres : plaqués au bord du cadran s'ils sont hors portée (direction)
+  if (data.system) {
+    for (const [key, b] of data.system.bodies) {
+      b.getWorldPosition(_mfdF);
+      const col = key === "sun" ? MFD_AMBER : "#" + new THREE.Color(b.def.color || 0x99aabb).getHexString();
+      blip(_mfdF.x, _mfdF.y, _mfdF.z, col, 2.5, true);
+    }
+  }
+  // objectif de mission : losange ambre (plaqué au bord si lointain)
+  if (data.objective) {
+    _mfdV.copy(data.objective).sub(pos).applyQuaternion(_mfdQ);
+    let px = _mfdV.x / NAV_RANGE, pz = _mfdV.z / NAV_RANGE;
+    const d = Math.hypot(px, pz) || 1;
+    if (d > 1) { px /= d; pz /= d; }
+    const bx = cx + px * R, by = cy + pz * R;
+    ctx.strokeStyle = MFD_AMBER; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 5); ctx.lineTo(bx + 5, by); ctx.lineTo(bx, by + 5); ctx.lineTo(bx - 5, by);
+    ctx.closePath(); ctx.stroke();
+  }
+  // vaisseau au centre (flèche vers l'avant)
+  ctx.fillStyle = MFD_GREEN;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx - 4, cy + 4); ctx.lineTo(cx + 4, cy + 4); ctx.closePath(); ctx.fill();
+}
+
+// ---- ADI : horizon artificiel (tangage + inclinaison réels), cap, vitesse ----
+function drawAdi(ctx, ship) {
+  ship.forward(_mfdF);
+  const pitch = Math.asin(THREE.MathUtils.clamp(_mfdF.y, -1, 1));
+  const heading = (Math.atan2(-_mfdF.x, -_mfdF.z) * 180 / Math.PI + 360) % 360;
+  const kmps = Math.abs(ship.speed) / 10;
+  const speedTxt = kmps >= 1000 ? (kmps / 1000).toFixed(1) + "K" : kmps.toFixed(kmps < 10 ? 1 : 0);
+  mfdFrame(ctx, "ADI · ATT");
+  const cx = MFD_W / 2, cy = MFD_H / 2 + 12;
+  const PX15 = 26;                                        // pixels par 15° de tangage
+  ctx.save();
+  ctx.beginPath(); ctx.rect(30, 32, MFD_W - 60, MFD_H - 52); ctx.clip();
+  ctx.translate(cx, cy);
+  ctx.rotate(-(ship._bank || 0));                          // l'horizon s'incline en virage
+  const off = (pitch * 180 / Math.PI / 15) * PX15;         // cabré -> l'horizon descend
+  // ligne d'horizon
+  ctx.strokeStyle = "rgba(98,216,255,.6)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-95, off); ctx.lineTo(95, off); ctx.stroke();
+  // échelle de tangage
+  ctx.lineWidth = 1; ctx.strokeStyle = MFD_DIM; ctx.fillStyle = MFD_DIM;
+  ctx.font = "8px ui-monospace, monospace";
+  for (const degLine of [-60, -45, -30, -15, 15, 30, 45, 60]) {
+    const y = off - (degLine / 15) * PX15;
+    const w = degLine % 30 === 0 ? 40 : 24;
+    ctx.beginPath(); ctx.moveTo(-w, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.fillText(String(Math.abs(degLine)), w + 4, y + 3);
+  }
+  ctx.restore();
+  // maquette centrale fixe (l'avion, jamais l'horizon)
+  ctx.fillStyle = MFD_AMBER;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx - 9, cy + 7); ctx.lineTo(cx + 9, cy + 7); ctx.closePath(); ctx.fill();
+  // cap + vitesse en direct
+  ctx.fillStyle = "rgba(220,235,255,.9)"; ctx.font = "bold 13px ui-monospace, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(`${String(Math.round(heading)).padStart(3, "0")}° · ${speedTxt} KM/S`, cx, 28);
+  ctx.textAlign = "left";
+  // mode moteur
+  ctx.font = "9px ui-monospace, monospace";
+  ctx.fillStyle = ship.warping ? "#b9a6ff" : ship.boosting ? MFD_AMBER : MFD_CYAN;
+  ctx.fillText(ship.warping ? "DISTORSION" : ship.boosting ? "POST-COMB" : "CROISIÈRE", 10, MFD_H - 10);
+}
+
+// ---- SYS : bouclier / coque / poussée / distorsion réels ----
+function drawSys(ctx, ship, data) {
+  mfdFrame(ctx, "SYS · ÉNERGIE");
+  const st = data.status;
+  const bars = [
+    ["SHD", st ? st.shield : 1, MFD_CYAN],
+    ["COQ", st ? st.hull : 1, (st && st.hull < 0.34) ? "#ff5d6c" : MFD_GREEN],
+    ["THR", THREE.MathUtils.clamp(ship.throttleVis, 0, 1), MFD_AMBER],
+    ["WRP", THREE.MathUtils.clamp(ship.warpAmount, 0, 1), "#9b8cff"],
+    ["VIT", THREE.MathUtils.clamp(Math.abs(ship.speed) / 60000, 0, 1), MFD_CYAN],
+  ];
+  bars.forEach(([label, v, col], i) => {
+    const x = 26 + i * 44, y0 = MFD_H - 34, hMax = 88;
+    ctx.fillStyle = "rgba(98,216,255,.10)"; ctx.fillRect(x, y0 - hMax, 16, hMax);
+    ctx.fillStyle = col; ctx.globalAlpha = 0.85;
+    ctx.fillRect(x, y0 - hMax * v, 16, hMax * v);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = MFD_TXT; ctx.fillText(label, x - 2, y0 + 14);
+    ctx.fillStyle = "rgba(220,235,255,.5)";
+    ctx.fillText(String(Math.round(v * 100)), x - 2, y0 - hMax - 4);
+  });
 }
 
 // petit halo radial réutilisé (lueur de tuyère)
@@ -306,18 +409,22 @@ export class Ship {
     const hood = new THREE.Mesh(new THREE.BoxGeometry(0.80, 0.016, 0.12), frameMat);
     hood.position.set(0, 0.372, -1.685); hood.rotation.x = 0.46; cp.add(hood);
 
-    // trois écrans MFD (interfaces dessinées : radar / horizon / systèmes),
+    // trois écrans MFD (instruments TEMPS RÉEL : radar / horizon / systèmes),
     // posés sur la console, inclinés vers le pilote, sous la ligne d'horizon
-    const mkScreen = (kind, x, w, h) => {
+    this._mfds = { nav: makeMfd(), adi: makeMfd(), sys: makeMfd() };
+    this._mfdAcc = 1;                                     // premier rafraîchissement immédiat
+    const mkScreen = (mfd, x, w, h) => {
       const bezel = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.024, h + 0.024), frameMat);
       bezel.position.set(x, 0.349, -1.545); bezel.rotation.x = -1.05; cp.add(bezel);
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: mfdTexture(kind), toneMapped: false }));
+        new THREE.MeshBasicMaterial({ map: mfd.tex, toneMapped: false }));
       scr.position.set(x, 0.35, -1.541); scr.rotation.x = -1.05; cp.add(scr);
     };
-    mkScreen("nav", -0.24, 0.175, 0.11);
-    mkScreen("adi", 0, 0.205, 0.13);
-    mkScreen("sys", 0.24, 0.175, 0.11);
+    mkScreen(this._mfds.nav, -0.24, 0.175, 0.11);
+    mkScreen(this._mfds.adi, 0, 0.205, 0.13);
+    mkScreen(this._mfds.sys, 0.24, 0.175, 0.11);
+    // premier dessin (écrans jamais noirs, même avant la première frame jouée)
+    this.updateCockpit(1, {}, true);
 
     // rangées de boutons rétroéclairés (petits, tamisés), SUR la face inclinée
     const BTN_COLS = [0x62d8ff, 0xffc24d, 0x62ffb0, 0x9b8cff, 0x8fa8cd];
@@ -398,6 +505,23 @@ export class Ship {
     model.scale.setScalar(SHIP.size / 6.5);
     this.group.add(model);
     this.setView(SETTINGS.view === "cockpit" ? "cockpit" : "chase");
+  }
+
+  // Rafraîchit les instruments du tableau de bord (~8 Hz, vue cockpit
+  // uniquement) avec les VRAIES données : data = { status, system, rocks,
+  // objective (Vector3|null) }. `force` : dessin initial hors cockpit.
+  updateCockpit(dt, data, force) {
+    if (!this._mfds) return;
+    if (!force && this.view !== "cockpit") return;
+    this._mfdAcc += dt;
+    if (this._mfdAcc < 0.12) return;
+    this._mfdAcc = 0;
+    drawNav(this._mfds.nav.ctx, this._t, this, data);
+    drawAdi(this._mfds.adi.ctx, this);
+    drawSys(this._mfds.sys.ctx, this, data);
+    this._mfds.nav.tex.needsUpdate = true;
+    this._mfds.adi.tex.needsUpdate = true;
+    this._mfds.sys.tex.needsUpdate = true;
   }
 
   // Vue « chase » (3ᵉ personne) ou « cockpit » (dans la verrière).

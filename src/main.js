@@ -137,6 +137,7 @@ const stats = { dist: 0, start: 0 };
 let prevMode = "cruise";
 const tmp = new THREE.Vector3();
 const prevShipPos = new THREE.Vector3();  // position avant le pas physique (collision balayée roches)
+const mfdObjective = new THREE.Vector3(); // objectif de mission pour le radar du cockpit
 let lastNav = { dist: 1e9, key: null };
 
 hud.buildControls(document.getElementById("controlsGrid"), T("controls"));
@@ -650,6 +651,11 @@ function frame(now) {
     camera.updateMatrixWorld();
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
 
+    // instruments du cockpit : vraies données (radar, assiette, systèmes)
+    const act0 = missions && missions.activity;
+    const hasObj = !!(act0 && act0.objectivePos(mfdObjective, ship.group.position));
+    ship.updateCockpit(dt, { status, system, rocks, objective: hasObj ? mfdObjective : null });
+
     const mode = ship.warping ? "warp" : ship.boosting ? "boost" : "cruise";
     if (mode !== prevMode) {
       if (mode === "warp") { sfx.warpOn(); bark("warp"); }
@@ -697,7 +703,11 @@ function frame(now) {
     hud.updateMinimap(system, ship, tk);
   } else if (system) {
     system.update(dt * 0.4, camera);
-    if (ship) ship.updateCamera(dt, camera);
+    if (ship) {
+      ship.updateCamera(dt, camera);
+      // en pause / au menu : les instruments continuent de vivre (balayage radar)
+      ship.updateCockpit(dt, { status, system, rocks, objective: null });
+    }
   }
 
   if (pionnier && system) updateProbe(dt);                               // sonde Pionnier-9 près de Pluton
