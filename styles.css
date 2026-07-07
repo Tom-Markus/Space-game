@@ -211,7 +211,10 @@ body.warping #warpfx,body.warping #warpfx::before,body.warping #warpfx::after{op
 #targetMarker.nav em{color:#bfeaff}
 #targetArrow.nav{color:var(--accent);text-shadow:0 0 12px rgba(98,216,255,.75)}
 
-#prompt{position:fixed;bottom:24%;left:50%;transform:translateX(-50%);background:rgba(8,16,32,.82);
+/* couloirs du bas (vue poursuite) : télémétrie 20-84px · sous-titres 98-~200px ·
+   invite à 37 % (au-dessus du VAISSEAU, sous le réticule) — jamais de chevauchement,
+   même avec une réplique d'ARIA sur trois lignes. */
+#prompt{position:fixed;bottom:37%;left:50%;transform:translateX(-50%);background:rgba(8,16,32,.82);
   border:1px solid var(--accent);border-radius:30px;padding:11px 26px;font-size:14.5px;color:#eaf3ff;
   box-shadow:0 0 28px rgba(98,216,255,.3);animation:pp 1.5s infinite}
 #prompt b{color:var(--accent);font-family:var(--mono)}
@@ -556,6 +559,8 @@ body.damagefx #fxflash{opacity:1;animation:dmgflash .65s ease-out 1;
   #statusWidget{left:auto;right:8px;top:118px;bottom:auto;width:128px;padding:6px 9px}
   /* sous-titres : au-dessus des commandes tactiles, jamais sur le stick */
   #comms{bottom:184px;max-width:80vw}
+  /* invite : au-dessus des sous-titres (couloir dédié) */
+  #prompt{bottom:300px;font-size:13px;padding:9px 18px}
   .corner{display:none}
   #help{display:none !important}
 }
